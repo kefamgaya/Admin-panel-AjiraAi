@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { firebaseAdmin } from "@/lib/firebase-admin";
+import * as admin from "firebase-admin";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -59,24 +60,83 @@ export async function POST(request: Request) {
     let successCount = 0;
     let failureCount = 0;
 
-    // 2. Send via FCM
+    // 2. Send via FCM following best practices
+    // Reference: https://firebase.google.com/docs/cloud-messaging/send-message
     if (tokens.length > 0) {
-      // FCM Multicast allows up to 500 tokens at once
+      // FCM Multicast allows up to 500 tokens at once (sendEachForMulticast limit)
       const batchSize = 500;
+      const invalidTokens: string[] = [];
+      
       for (let i = 0; i < tokens.length; i += batchSize) {
         const batchTokens = tokens.slice(i, i + batchSize);
-        const messagePayload = {
-          notification: { title, body: message },
+        
+        // Build FCM message payload following FCM best practices
+        const messagePayload: admin.messaging.MulticastMessage = {
+          notification: { 
+            title: title.substring(0, 65), // FCM recommended: max 65 chars
+            body: message.substring(0, 240) // FCM recommended: max 240 chars
+          },
           tokens: batchTokens,
           data: {
-             click_action: "FLUTTER_NOTIFICATION_CLICK", // Example for mobile
-             sound: "default" 
-          }
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+            sent_at: new Date().toISOString(),
+          },
+          android: {
+            priority: "high" as const,
+            notification: {
+              sound: "default",
+              channelId: "default",
+              priority: "high" as const,
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
         };
 
-        const response = await firebaseAdmin.messaging().sendEachForMulticast(messagePayload);
-        successCount += response.successCount;
-        failureCount += response.failureCount;
+        try {
+          const response = await firebaseAdmin.messaging().sendEachForMulticast(messagePayload);
+          successCount += response.successCount;
+          failureCount += response.failureCount;
+          
+          // Handle invalid tokens - FCM best practice: remove invalid tokens
+          if (response.responses) {
+            response.responses.forEach((resp, idx) => {
+              if (!resp.success) {
+                const errorCode = resp.error?.code;
+                if (errorCode === 'messaging/invalid-registration-token' || 
+                    errorCode === 'messaging/registration-token-not-registered') {
+                  invalidTokens.push(batchTokens[idx]);
+                }
+              }
+            });
+          }
+        } catch (error: any) {
+          console.error("FCM send error:", error);
+          // Handle rate limiting
+          if (error.code === 'messaging/quota-exceeded' || error.code === 'messaging/unavailable') {
+            console.warn("FCM rate limit hit, consider implementing exponential backoff");
+          }
+          failureCount += batchTokens.length;
+        }
+      }
+      
+      // Clean up invalid tokens (FCM best practice)
+      if (invalidTokens.length > 0) {
+        try {
+          await supabase
+            .from("all_users")
+            .update({ token: null })
+            .in("token", invalidTokens);
+          console.log(`Cleaned up ${invalidTokens.length} invalid FCM tokens`);
+        } catch (cleanupErr) {
+          console.error("Error cleaning up invalid tokens:", cleanupErr);
+        }
       }
     }
 

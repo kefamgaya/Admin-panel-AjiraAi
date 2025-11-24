@@ -9,14 +9,58 @@ import { revalidatePath } from "next/cache";
 const AJIRA_APP_ID = "ca-app-pub-1644643871385985~1470724022";
 
 // Shared function to fetch all-time AdMob earnings from API for specific app
+// Helper function to get AdMob account ID
+async function getAdMobAccountId(accessToken: string): Promise<string> {
+  try {
+    const BASE_URL = "https://admob.googleapis.com/v1";
+    const url = `${BASE_URL}/accounts`;
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get accounts: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Handle different response structures
+    let accounts: any[] = [];
+    if (data.account && Array.isArray(data.account)) {
+      accounts = data.account;
+    } else if (data.accounts && Array.isArray(data.accounts)) {
+      accounts = data.accounts;
+    }
+    
+    if (accounts.length > 0) {
+      const account = accounts[0];
+      // Account name is like "accounts/pub-1644643871385985", we need "pub-1644643871385985"
+      return account.name ? account.name.replace('accounts/', '') : account.publisherId || `pub-${process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "")}`;
+    }
+    
+    // Fallback: use publisher ID with "pub-" prefix
+    const publisherId = process.env.ADMOB_PUBLISHER_ID || "";
+    return publisherId.startsWith("pub-") ? publisherId : `pub-${publisherId.replace("pub-", "")}`;
+  } catch (error) {
+    console.error("Error getting AdMob account ID:", error);
+    // Fallback: use publisher ID with "pub-" prefix
+    const publisherId = process.env.ADMOB_PUBLISHER_ID || "";
+    return publisherId.startsWith("pub-") ? publisherId : `pub-${publisherId.replace("pub-", "")}`;
+  }
+}
+
 export async function getAllTimeAdMobEarnings(): Promise<number> {
   try {
     const clientId = process.env.ADMOB_API_CLIENT_ID;
     const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
     const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
-    const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
 
-    if (!clientId || !clientSecret || !refreshToken || !publisherId) {
+    if (!clientId || !clientSecret || !refreshToken) {
       console.warn("AdMob credentials not configured, falling back to database");
       return 0;
     }
@@ -25,6 +69,11 @@ export async function getAllTimeAdMobEarnings(): Promise<number> {
 
     // Fetch all-time AdMob earnings for specific app (from app launch date, using a very early date)
     const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
+    
+    // Get the correct account ID (with "pub-" prefix)
+    const accountId = await getAdMobAccountId(accessToken);
+    console.log(`Using AdMob account ID: ${accountId}`);
+    
     // AdMob typically has data from when the app was first published
     // Use a date 5 years ago as start date to ensure we get all historical data
     const allTimeStartDate = new Date();
@@ -34,7 +83,7 @@ export async function getAllTimeAdMobEarnings(): Promise<number> {
     console.log(`Fetching AdMob data from ${allTimeStartDate.toISOString()} to ${allTimeEndDate.toISOString()}`);
 
     const admobReportData = await fetchAdMobEarnings(
-      publisherId,
+      accountId,
       accessToken,
       allTimeStartDate,
       allTimeEndDate,
@@ -89,14 +138,18 @@ export async function syncAdMobData(daysToSync: number = 30) {
   const clientId = process.env.ADMOB_API_CLIENT_ID;
   const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
   const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
-  const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
 
-  if (!clientId || !clientSecret || !refreshToken || !publisherId) {
+  if (!clientId || !clientSecret || !refreshToken) {
     return { success: false, error: "AdMob credentials missing in .env.local" };
   }
 
   try {
     const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
+    
+    // Get the correct account ID (with "pub-" prefix)
+    const accountId = await getAdMobAccountId(accessToken);
+    console.log(`Syncing AdMob data using account ID: ${accountId}`);
+    
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - daysToSync); // Use dynamic duration
@@ -104,7 +157,7 @@ export async function syncAdMobData(daysToSync: number = 30) {
     // Use the specific app ID: ca-app-pub-1644643871385985~1470724022
     const appId = AJIRA_APP_ID;
     
-    const reportData = await fetchAdMobEarnings(publisherId, accessToken, startDate, endDate, appId);
+    const reportData = await fetchAdMobEarnings(accountId, accessToken, startDate, endDate, appId);
 
     let processedCount = 0;
     for (const row of reportData) {

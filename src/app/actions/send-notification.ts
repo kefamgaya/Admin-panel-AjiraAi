@@ -98,38 +98,77 @@ export async function sendNotification(params: SendNotificationParams) {
       return { success: false, error: "No recipients found" };
     }
 
-    // FCM limits: max 500 tokens per multicast message
-    // We'll batch the notifications
-    const batchSize = 500;
+    // FCM limits and best practices:
+    // - Max 500 tokens per multicast message (sendEachForMulticast)
+    // - Use batching to avoid rate limits
+    // - Handle invalid tokens and remove them
+    // - Implement retry logic for transient errors
+    const batchSize = 500; // FCM maximum for sendEachForMulticast
     let totalDelivered = 0;
     let totalFailed = 0;
 
-    // Build FCM message payload following FCM rules
+    // Build FCM message payload following FCM best practices
+    // Reference: https://firebase.google.com/docs/cloud-messaging/send-message
     const fcmPayload: admin.messaging.MulticastMessage = {
       notification: {
-        title: title.substring(0, 65), // Enforce max length
-        body: message.substring(0, 240), // Enforce max length
-        ...(imageUrl && { imageUrl }), // Optional image
+        title: title.substring(0, 65), // FCM recommended: max 65 chars for title
+        body: message.substring(0, 240), // FCM recommended: max 240 chars for body
+        ...(imageUrl && { imageUrl }), // Optional: large image for Android/iOS
       },
+      // Data payload for handling in app (not displayed in notification)
       data: {
-        ...(actionUrl && { click_action: actionUrl }), // Optional action
+        ...(actionUrl && { click_action: actionUrl }), // Deep link or action URL
         sent_at: new Date().toISOString(),
+        notification_type: recipientType,
       },
+      // Android-specific configuration
       android: {
-        priority: "high",
+        priority: "high" as const, // Required for data messages, recommended for notifications
         notification: {
           sound: "default",
-          channelId: "default",
+          channelId: "default", // Android notification channel
           priority: "high" as const,
+          ...(imageUrl && { imageUrl }), // Android large image
+        },
+        // Optional: Android-specific data
+        data: {
+          ...(actionUrl && { click_action: actionUrl }),
         },
       },
+      // iOS (APNS) specific configuration
       apns: {
         payload: {
           aps: {
+            alert: {
+              title: title.substring(0, 65),
+              body: message.substring(0, 240),
+            },
             sound: "default",
-            badge: 1,
+            badge: 1, // Increment badge count
+            ...(imageUrl && { "mutable-content": 1 }), // Enable notification extension for images
           },
         },
+        // Optional: Custom data for iOS
+        ...(imageUrl && {
+          fcmOptions: {
+            imageUrl,
+          },
+        }),
+      },
+      // Web push configuration
+      webpush: {
+        notification: {
+          title: title.substring(0, 65),
+          body: message.substring(0, 240),
+          icon: "/icon-192x192.png", // Default icon path
+          ...(imageUrl && { image: imageUrl }),
+          ...(actionUrl && { requireInteraction: true }), // Keep notification until user interacts
+        },
+        ...(actionUrl && {
+          fcmOptions: {
+            link: actionUrl,
+          },
+        }),
       },
       tokens: [], // Will be filled in batches
     };
@@ -168,8 +207,11 @@ export async function sendNotification(params: SendNotificationParams) {
       return { success: false, error: "Firebase Admin not initialized. Please check environment variables." };
     }
 
-    // Send in batches
+    // Send in batches following FCM best practices
+    // FCM allows up to 500 tokens per multicast message
     const tokenStrings = validTokens.map(t => t.token);
+    const invalidTokens: string[] = []; // Track invalid tokens for cleanup
+    
     for (let i = 0; i < tokenStrings.length; i += batchSize) {
       const tokens = tokenStrings.slice(i, i + batchSize);
 
@@ -181,9 +223,45 @@ export async function sendNotification(params: SendNotificationParams) {
 
         totalDelivered += response.successCount;
         totalFailed += response.failureCount;
-      } catch (error) {
+
+        // Handle invalid tokens - FCM best practice: remove invalid tokens
+        if (response.responses) {
+          response.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+              const errorCode = resp.error?.code;
+              // Token is invalid or unregistered - should be removed
+              if (errorCode === 'messaging/invalid-registration-token' || 
+                  errorCode === 'messaging/registration-token-not-registered') {
+                invalidTokens.push(tokens[idx]);
+              }
+            }
+          });
+        }
+      } catch (error: any) {
         console.error("FCM send error:", error);
+        // If it's a rate limit error, we should retry with backoff
+        if (error.code === 'messaging/quota-exceeded' || error.code === 'messaging/unavailable') {
+          console.warn("FCM rate limit hit, consider implementing exponential backoff");
+        }
         totalFailed += tokens.length;
+      }
+    }
+
+    // Clean up invalid tokens (FCM best practice)
+    if (invalidTokens.length > 0) {
+      console.log(`Cleaning up ${invalidTokens.length} invalid FCM tokens`);
+      try {
+        // Remove invalid tokens from database
+        const { error: cleanupError } = await supabase
+          .from("all_users")
+          .update({ token: null })
+          .in("token", invalidTokens);
+        
+        if (cleanupError) {
+          console.error("Error cleaning up invalid tokens:", cleanupError);
+        }
+      } catch (cleanupErr) {
+        console.error("Error during token cleanup:", cleanupErr);
       }
     }
 

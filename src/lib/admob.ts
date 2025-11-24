@@ -102,53 +102,46 @@ export async function fetchAdMobEarnings(
       throw new Error(`AdMob API Error: ${response.statusText}`);
     }
 
-    // AdMob API returns a streaming JSON response
-    // The response can be:
-    // 1. A JSON object with a "rows" array: { rows: [{ row: {...} }] }
-    // 2. A JSON array directly: [{ row: {...} }]
-    // 3. A stream of JSON objects (newline-delimited)
-    
+    // AdMob API returns a streaming JSON response (NDJSON - newline-delimited JSON)
+    // Each line is a separate JSON object, first line is usually header
     const text = await response.text();
-    let data: any;
+    const lines = text.trim().split('\n').filter(line => line.trim());
     
-    try {
-      // Try parsing as JSON first
-      data = JSON.parse(text);
-    } catch (e) {
-      // If not valid JSON, it might be a stream of JSON objects (NDJSON)
-      // Parse line by line
-      const lines = text.trim().split('\n').filter(line => line.trim());
-      const parsedLines = lines.map(line => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
+    let rows: any[] = [];
+    
+    // Parse each line as JSON
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line);
+        
+        // Skip header objects (they don't have "row" property)
+        if (parsed.row) {
+          rows.push(parsed);
+        } else if (parsed.rows && Array.isArray(parsed.rows)) {
+          // If a line contains rows array, add all rows
+          rows.push(...parsed.rows);
         }
-      }).filter(Boolean);
-      
-      if (parsedLines.length > 0) {
-        data = parsedLines;
-      } else {
-        console.error("Failed to parse AdMob response:", text.substring(0, 500));
-        return [];
+      } catch (e) {
+        // Skip invalid JSON lines
+        continue;
       }
     }
     
-    // Handle different response structures
-    let rows: any[] = [];
-    
-    if (Array.isArray(data)) {
-      // Direct array of row objects
-      rows = data;
-    } else if (data.rows && Array.isArray(data.rows)) {
-      // Object with rows property
-      rows = data.rows;
-    } else if (data.row) {
-      // Single row object
-      rows = [{ row: data.row }];
-    } else {
-      console.warn("Unexpected AdMob response structure:", JSON.stringify(data).substring(0, 500));
-      return [];
+    // If no rows found, try parsing as single JSON object (fallback)
+    if (rows.length === 0) {
+      try {
+        const data = JSON.parse(text);
+        if (Array.isArray(data)) {
+          rows = data;
+        } else if (data.rows && Array.isArray(data.rows)) {
+          rows = data.rows;
+        } else if (data.row) {
+          rows = [{ row: data.row }];
+        }
+      } catch (e) {
+        console.warn("Failed to parse AdMob response:", text.substring(0, 500));
+        return [];
+      }
     }
 
     // Parse rows
