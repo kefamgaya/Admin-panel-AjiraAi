@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, Mail, Lock, User, AlertCircle, ArrowRight, Users } from "lucide-react";
-import { auth } from "@/lib/firebase-client";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { Mail, Lock, User, ArrowRight, Users } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 import { registerAdminInDatabase } from "@/app/actions/admin-register";
 import Link from "next/link";
 
@@ -79,6 +78,19 @@ export default function RegisterPage() {
     return basePermissions;
   };
 
+  // Lazy initialization of Supabase client to avoid build-time errors
+  const getSupabaseClient = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      return createClient();
+    } catch (err) {
+      console.error('Failed to create Supabase client:', err);
+      return null;
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -91,24 +103,34 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      if (!auth) {
-        throw new Error("Firebase authentication is not configured. Please check your environment variables.");
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        throw new Error("Supabase client not available. Please check your environment configuration.");
       }
 
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      const user = userCredential.user;
-
-      await updateProfile(user, {
-        displayName: formData.fullName,
+      // 1. Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            role: formData.role,
+          },
+        },
       });
 
+      if (authError) {
+        throw authError;
+      }
+
+      if (!authData.user) {
+        throw new Error("Failed to create user account");
+      }
+
+      // 2. Register admin in Supabase database
       const result = await registerAdminInDatabase({
-        uid: user.uid,
+        uid: authData.user.id,
         email: formData.email,
         fullName: formData.fullName,
         role: formData.role,
@@ -116,6 +138,8 @@ export default function RegisterPage() {
       });
 
       if (!result.success) {
+        // If database registration fails, we should delete the auth user
+        // But Supabase doesn't allow deleting users from client, so we'll just show the error
         throw new Error(result.error || "Failed to register admin in database");
       }
 
@@ -128,12 +152,13 @@ export default function RegisterPage() {
       console.error("Registration error:", err);
       let errorMessage = "Failed to register admin user";
       
-      if (err.code === "auth/email-already-in-use") {
+      // Handle Supabase Auth errors
+      if (err.message?.includes("already registered") || err.message?.includes("already exists")) {
         errorMessage = "This email is already registered";
-      } else if (err.code === "auth/invalid-email") {
+      } else if (err.message?.includes("Invalid email")) {
         errorMessage = "Invalid email address";
-      } else if (err.code === "auth/weak-password") {
-        errorMessage = "Password is too weak";
+      } else if (err.message?.includes("Password")) {
+        errorMessage = "Password is too weak. Please use at least 6 characters";
       } else if (err.message) {
         errorMessage = err.message;
       }
