@@ -109,7 +109,8 @@ export default function RegisterPage() {
       }
 
       // 1. Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Add timeout wrapper for self-hosted Supabase
+      const signUpPromise = supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -120,7 +121,20 @@ export default function RegisterPage() {
         },
       });
 
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout: Supabase server did not respond within 30 seconds')), 30000);
+      });
+
+      const { data: authData, error: authError } = await Promise.race([
+        signUpPromise,
+        timeoutPromise,
+      ]) as any;
+
       if (authError) {
+        // Handle specific timeout errors
+        if (authError.message?.includes('timeout') || authError.message?.includes('aborted')) {
+          throw new Error('Connection timeout: Unable to reach Supabase server. Please check if your self-hosted Supabase instance is running and accessible.');
+        }
         throw authError;
       }
 
@@ -152,13 +166,17 @@ export default function RegisterPage() {
       console.error("Registration error:", err);
       let errorMessage = "Failed to register admin user";
       
-      // Handle Supabase Auth errors
-      if (err.message?.includes("already registered") || err.message?.includes("already exists")) {
+      // Handle timeout and connection errors
+      if (err.message?.includes("timeout") || err.message?.includes("aborted") || err.message?.includes("504") || err.message?.includes("Gateway Timeout")) {
+        errorMessage = "Connection timeout: Unable to reach Supabase server. Please check:\n1. Your self-hosted Supabase instance is running\n2. The endpoint https://get.dreamjobs1.com is accessible\n3. There are no firewall or network issues";
+      } else if (err.message?.includes("already registered") || err.message?.includes("already exists") || err.message?.includes("User already registered")) {
         errorMessage = "This email is already registered";
-      } else if (err.message?.includes("Invalid email")) {
+      } else if (err.message?.includes("Invalid email") || err.message?.includes("invalid email")) {
         errorMessage = "Invalid email address";
-      } else if (err.message?.includes("Password")) {
+      } else if (err.message?.includes("Password") || err.message?.includes("password")) {
         errorMessage = "Password is too weak. Please use at least 6 characters";
+      } else if (err.message?.includes("Network") || err.message?.includes("network") || err.message?.includes("Failed to fetch")) {
+        errorMessage = "Network error: Unable to connect to Supabase server. Please check your connection and server status.";
       } else if (err.message) {
         errorMessage = err.message;
       }
