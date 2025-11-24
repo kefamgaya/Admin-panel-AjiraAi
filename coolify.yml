@@ -1,0 +1,21 @@
+# Coolify Configuration File
+# This file is used by Coolify for deployment configuration
+
+services:
+  admin-portal:
+    image: ${DOCKER_REGISTRY}/ajira-admin-portal:${VERSION:-latest}
+    ports:
+      - "${PORT:-3003}:3003"
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      NEXT_TELEMETRY_DISABLED: 1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3003 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+

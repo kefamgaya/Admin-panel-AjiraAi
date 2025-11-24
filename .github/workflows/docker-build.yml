@@ -1,0 +1,29 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./admin-portal
+          file: ./admin-portal/Dockerfile
+          push: false
+          tags: ajira-admin-portal:latest
+          cache-from: type=registry,ref=ajira-admin-portal:buildcache
+          cache-to: type=registry,ref=ajira-admin-portal:buildcache,mode=max
+
+
