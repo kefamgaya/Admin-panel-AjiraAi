@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { firebaseAdmin } from "@/lib/firebase-admin";
+import { firebaseAdmin, ensureFirebaseAdmin } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 
 interface SendNotificationParams {
@@ -207,9 +207,20 @@ export async function sendNotification(params: SendNotificationParams) {
       }
     }
 
-    // Check if Firebase Admin is initialized
+    // Check if Firebase Admin is initialized, try to initialize if not
     if (!firebaseAdmin.apps.length) {
-      return { success: false, error: "Firebase Admin not initialized. Please check environment variables." };
+      const initialized = ensureFirebaseAdmin();
+      if (!initialized) {
+        const missing: string[] = [];
+        if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
+        if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL');
+        if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY');
+        
+        return { 
+          success: false, 
+          error: `Firebase Admin not initialized. Missing environment variables: ${missing.join(', ')}. Please check your production environment configuration.` 
+        };
+      }
     }
 
     // Send in batches following FCM best practices
