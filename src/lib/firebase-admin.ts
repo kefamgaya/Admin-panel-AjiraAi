@@ -27,11 +27,12 @@ function initializeFirebaseAdmin(): boolean {
     }
 
     // Initialize Firebase Admin
+    // At this point, we've already checked that all three variables exist
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
+        projectId: projectId!,
+        clientEmail: clientEmail!,
+        privateKey: privateKey!.replace(/\\n/g, '\n'),
       }),
     });
 
