@@ -24,7 +24,7 @@ import {
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, BarChart2, Bell } from "lucide-react";
-import NotificationsTable from "./NotificationsTable";
+import { NotificationsTable } from "./NotificationsTable";
 
 interface NotificationHistoryItem {
   id: number;

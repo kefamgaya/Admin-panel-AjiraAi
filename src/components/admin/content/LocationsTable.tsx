@@ -194,14 +194,12 @@ export default function LocationsTable({
         </div>
       </div>
 
-      {/* @ts-ignore - TabGroup has strict typing for children */}
-      <TabGroup index={activeTab} onIndexChange={handleTabChange} as="div">
+      <TabGroup index={activeTab} onIndexChange={handleTabChange}>
         <TabList className="mb-4">
           <Tab icon={Map}>Regions</Tab>
           <Tab icon={MapPin}>Districts</Tab>
         </TabList>
         
-        {/* Shared Search Bar */}
         <div className="mb-4">
             <TextInput
               icon={Search}
@@ -211,8 +209,7 @@ export default function LocationsTable({
             />
         </div>
 
-        {/* Regions Table */}
-        <div style={{ display: activeTab === 0 ? 'block' : 'none' }}>
+        <div className={activeTab === 0 ? '' : 'hidden'}>
           <Card>
             <Table>
               <TableHead>
@@ -242,8 +239,7 @@ export default function LocationsTable({
           </Card>
         </div>
 
-        {/* Districts Table */}
-        <div style={{ display: activeTab === 1 ? 'block' : 'none' }}>
+        <div className={activeTab === 1 ? '' : 'hidden'}>
           <Card>
             <Table>
               <TableHead>
@@ -275,7 +271,6 @@ export default function LocationsTable({
           </Card>
         </div>
 
-        {/* Pagination Controls */}
         <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-800 pt-4 mt-4">
             <div className="flex items-center gap-2">
                 <Text className="text-sm text-gray-500">
