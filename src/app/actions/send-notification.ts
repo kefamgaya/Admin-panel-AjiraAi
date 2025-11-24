@@ -99,9 +99,8 @@ export async function sendNotification(params: SendNotificationParams) {
       targetUids = await fetchAllRecipients(queryBuilder);
     } else if (recipientType === "seekers") {
       // Fetch job seekers with pagination
-      const queryBuilder = supabase
-        .from("all_users")
-        .eq("role", "seeker");
+      const baseQuery = supabase.from("all_users").select("*");
+      const queryBuilder = baseQuery.eq("role", "seeker") as any;
       targetUids = await fetchAllRecipients(queryBuilder);
     } else if (recipientType === "companies") {
       // Fetch companies with pagination

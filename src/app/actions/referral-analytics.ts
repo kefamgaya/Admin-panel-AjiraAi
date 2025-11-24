@@ -94,9 +94,9 @@ export async function getReferralAnalytics() {
 
   // Get top 10 referrers
   const topReferrers = Object.entries(referrerCounts)
-    .sort(([, a], [, b]) => b.count - a.count)
+    .sort(([, a], [, b]) => (b as { count: number; totalCredits: number; successfulReferrals: number }).count - (a as { count: number; totalCredits: number; successfulReferrals: number }).count)
     .slice(0, 10)
-    .map(([uid, data]) => ({ uid, ...data }));
+    .map(([uid, data]) => ({ uid, ...(data as { count: number; totalCredits: number; successfulReferrals: number }) }));
 
   // Fetch user details for top referrers
   if (topReferrers.length > 0) {
@@ -123,8 +123,8 @@ export async function getReferralAnalytics() {
     totalCreditsAwarded: totalReferrerCredits + totalRefereeCredits,
     totalReferrerCredits,
     totalRefereeCredits,
-    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value })),
-    referralsHistory: Object.entries(referralsByMonth).map(([date, count]) => ({ date, "Referrals": count })),
+    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value: value as number })),
+    referralsHistory: Object.entries(referralsByMonth).map(([date, count]) => ({ date, "Referrals": count as number })),
     topReferrers,
   };
 }

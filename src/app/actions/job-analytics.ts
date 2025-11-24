@@ -108,16 +108,16 @@ export async function getJobAnalytics() {
     activeJobs: activeJobsCount,
     featuredJobs: jobs.filter(j => j.is_featured).length,
     pendingJobs: statusDistribution.Pending,
-    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value })),
+    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value: value as number })),
     categoryDistribution: Object.entries(categoryDistribution)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10)
-        .map(([name, value]) => ({ name, value })),
-    typeDistribution: Object.entries(typeDistribution).map(([name, value]) => ({ name, value })),
+        .map(([name, value]) => ({ name, value: value as number })),
+    typeDistribution: Object.entries(typeDistribution).map(([name, value]) => ({ name, value: value as number })),
     locationDistribution: Object.entries(locationDistribution)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10)
-        .map(([name, value]) => ({ name, value })),
-    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Jobs": count })),
+        .map(([name, value]) => ({ name, value: value as number })),
+    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Jobs": count as number })),
   };
 }

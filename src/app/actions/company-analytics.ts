@@ -95,16 +95,16 @@ export async function getCompanyAnalytics() {
     blockedCompanies: companies.filter(c => c.is_blocked).length,
     activeJobPosters: companies.filter(c => (c.jobs_posted || 0) > 0).length,
     industryDistribution: Object.entries(industryDistribution)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10) // Top 10 industries
-        .map(([name, value]) => ({ name, value })),
-    sizeDistribution: Object.entries(sizeDistribution).map(([name, value]) => ({ name, value })),
+        .map(([name, value]) => ({ name, value: value as number })),
+    sizeDistribution: Object.entries(sizeDistribution).map(([name, value]) => ({ name, value: value as number })),
     locationDistribution: Object.entries(locationDistribution)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10)
-        .map(([name, value]) => ({ name, value })),
-    subscriptionDistribution: Object.entries(subscriptionDistribution).map(([name, value]) => ({ name, value })),
-    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Companies": count })),
+        .map(([name, value]) => ({ name, value: value as number })),
+    subscriptionDistribution: Object.entries(subscriptionDistribution).map(([name, value]) => ({ name, value: value as number })),
+    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Companies": count as number })),
   };
 }
 

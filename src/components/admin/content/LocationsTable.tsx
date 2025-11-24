@@ -21,7 +21,7 @@ import {
   SelectItem,
 } from "@tremor/react";
 import { Search, Plus, Pencil, Trash2, AlertTriangle, Map, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Region {
@@ -194,7 +194,8 @@ export default function LocationsTable({
         </div>
       </div>
 
-      <TabGroup index={activeTab} onIndexChange={handleTabChange}>
+      {/* @ts-ignore - TabGroup has strict typing for children */}
+      <TabGroup index={activeTab} onIndexChange={handleTabChange} as="div">
         <TabList className="mb-4">
           <Tab icon={Map}>Regions</Tab>
           <Tab icon={MapPin}>Districts</Tab>
@@ -211,7 +212,7 @@ export default function LocationsTable({
         </div>
 
         {/* Regions Table */}
-        {activeTab === 0 && (
+        <div style={{ display: activeTab === 0 ? 'block' : 'none' }}>
           <Card>
             <Table>
               <TableHead>
@@ -239,10 +240,10 @@ export default function LocationsTable({
               </TableBody>
             </Table>
           </Card>
-        )}
+        </div>
 
         {/* Districts Table */}
-        {activeTab === 1 && (
+        <div style={{ display: activeTab === 1 ? 'block' : 'none' }}>
           <Card>
             <Table>
               <TableHead>
@@ -272,7 +273,7 @@ export default function LocationsTable({
               </TableBody>
             </Table>
           </Card>
-        )}
+        </div>
 
         {/* Pagination Controls */}
         <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-800 pt-4 mt-4">

@@ -125,7 +125,7 @@ export async function getAIChatAnalytics() {
     }, {} as Record<string, number>);
 
     const topUsers = Object.entries(userConversationCount)
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => (b as number) - (a as number))
       .slice(0, 10)
       .map(([uid, count]) => ({ uid, conversations: count }));
 

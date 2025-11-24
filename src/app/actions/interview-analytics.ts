@@ -102,9 +102,9 @@ export async function getInterviewAnalytics() {
         try { return new Date(i.interview_date).toDateString() === new Date().toDateString(); } 
         catch { return false; }
     }).length,
-    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value })),
-    typeDistribution: Object.entries(typeDistribution).map(([name, value]) => ({ name, value })),
-    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "Interviews Scheduled": count })),
+    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value: value as number })),
+    typeDistribution: Object.entries(typeDistribution).map(([name, value]) => ({ name, value: value as number })),
+    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "Interviews Scheduled": count as number })),
   };
 }
 

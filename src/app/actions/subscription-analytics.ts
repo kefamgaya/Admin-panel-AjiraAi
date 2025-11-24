@@ -129,9 +129,9 @@ export async function getSubscriptionAnalytics() {
 
   // Get top 10 subscribers by total spend
   const topSubscribers = Object.entries(companySpending)
-    .sort(([, a], [, b]) => b.totalSpent - a.totalSpent)
+    .sort(([, a], [, b]) => (b as { count: number; totalSpent: number; activeSubscriptions: number; currentPlan: string }).totalSpent - (a as { count: number; totalSpent: number; activeSubscriptions: number; currentPlan: string }).totalSpent)
     .slice(0, 10)
-    .map(([uid, data]) => ({ uid, ...data }));
+    .map(([uid, data]) => ({ uid, ...(data as { count: number; totalSpent: number; activeSubscriptions: number; currentPlan: string }) }));
 
   // Fetch company details for top subscribers
   if (topSubscribers.length > 0) {
@@ -157,10 +157,10 @@ export async function getSubscriptionAnalytics() {
     cancelledSubscriptions: subscriptions.filter(s => s.status === 'cancelled').length,
     totalRevenue,
     activeRevenue,
-    planDistribution: Object.entries(planDistribution).map(([name, value]) => ({ name, value })),
-    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value })),
-    subscriptionsHistory: Object.entries(subscriptionsByMonth).map(([date, count]) => ({ date, "Subscriptions": count })),
-    revenueHistory: Object.entries(revenueByMonth).map(([date, revenue]) => ({ date, "Revenue": revenue })),
+    planDistribution: Object.entries(planDistribution).map(([name, value]) => ({ name, value: value as number })),
+    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value: value as number })),
+    subscriptionsHistory: Object.entries(subscriptionsByMonth).map(([date, count]) => ({ date, "Subscriptions": count as number })),
+    revenueHistory: Object.entries(revenueByMonth).map(([date, revenue]) => ({ date, "Revenue": revenue as number })),
     topSubscribers,
   };
 }

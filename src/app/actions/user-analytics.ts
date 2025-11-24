@@ -94,7 +94,7 @@ export async function getUserAnalytics() {
   });
   
   const topSkills = Object.entries(skillCounts)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 10)
     .map(([name, value]) => ({ name, value }));
 
@@ -137,22 +137,22 @@ export async function getUserAnalytics() {
   const ageOrder = ["Under 18", "18-24", "25-34", "35-44", "45-54", "55+", "Unknown"];
   const sortedAgeDistribution = Object.entries(ageDistribution)
     .sort(([a], [b]) => ageOrder.indexOf(a) - ageOrder.indexOf(b))
-    .map(([name, value]) => ({ name, value }));
+    .map(([name, value]) => ({ name, value: value as number }));
 
   return {
     totalUsers: users.length,
     activeUsers: users.filter(u => !u.is_blocked).length,
     blockedUsers: users.filter(u => u.is_blocked).length,
     verifiedUsers: users.filter(u => u.accounttype === 'verified').length,
-    roleDistribution: Object.entries(roleDistribution).map(([name, value]) => ({ name, value })),
-    genderDistribution: Object.entries(genderDistribution).map(([name, value]) => ({ name, value })),
-    accountTypeDistribution: Object.entries(accountTypeDistribution).map(([name, value]) => ({ name, value })),
-    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Users": count })),
+    roleDistribution: Object.entries(roleDistribution).map(([name, value]) => ({ name, value: value as number })),
+    genderDistribution: Object.entries(genderDistribution).map(([name, value]) => ({ name, value: value as number })),
+    accountTypeDistribution: Object.entries(accountTypeDistribution).map(([name, value]) => ({ name, value: value as number })),
+    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Users": count as number })),
     topSkills,
     locationDistribution: Object.entries(locationDistribution)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10)
-        .map(([name, value]) => ({ name, value })),
+        .map(([name, value]) => ({ name, value: value as number })),
     ageDistribution: sortedAgeDistribution
   };
 }

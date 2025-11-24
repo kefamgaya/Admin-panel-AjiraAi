@@ -136,11 +136,11 @@ export async function getNotificationAnalytics() {
     }, {} as Record<string, { count: number; delivered: number; read: number }>);
 
     const topSenders = Object.entries(senderActivity)
-      .sort(([, a], [, b]) => b.count - a.count)
+      .sort(([, a], [, b]) => (b as { count: number; delivered: number; read: number }).count - (a as { count: number; delivered: number; read: number }).count)
       .slice(0, 10)
       .map(([sender, stats]) => ({
         sender,
-        ...stats,
+        ...(stats as { count: number; delivered: number; read: number }),
       }));
 
     // Engagement metrics
@@ -169,7 +169,7 @@ export async function getNotificationAnalytics() {
         totalRead,
       },
       recipientTypes: Object.entries(recipientTypeDistribution)
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, value]) => ({ name, value: value as number }))
         .sort((a, b) => b.value - a.value),
       growth: monthlyGrowth,
       topSenders,

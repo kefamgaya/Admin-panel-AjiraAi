@@ -83,15 +83,15 @@ export async function getApplicationAnalytics() {
     rejected: applications.filter(a => a.status === 'rejected').length,
     pending: applications.filter(a => a.status === 'pending' || !a.status).length,
     avgRating: (applications.reduce((sum, app) => sum + (Number(app.ai_rating) || 0), 0) / (applications.filter(a => a.ai_rating).length || 1)).toFixed(1),
-    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value })),
+    statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value: value as number })),
     ratingDistribution: Object.entries(ratingDistribution)
         .sort((a, b) => {
             if (a[0] === "Unrated") return 1;
             if (b[0] === "Unrated") return -1;
             return parseInt(a[0]) - parseInt(b[0]);
         })
-        .map(([name, value]) => ({ name, value })),
-    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Applications": count })),
+        .map(([name, value]) => ({ name, value: value as number })),
+    growthHistory: Object.entries(growthByMonth).map(([date, count]) => ({ date, "New Applications": count as number })),
   };
 }
 

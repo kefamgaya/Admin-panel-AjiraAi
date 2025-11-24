@@ -196,7 +196,7 @@ export async function getPlatformAnalytics() {
   }, {} as Record<string, number>);
 
   const topLocations = Object.entries(userLocations)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 10)
     .map(([name, value]) => ({ name, value }));
 
@@ -214,7 +214,7 @@ export async function getPlatformAnalytics() {
   });
 
   const topSkills = Object.entries(skillCounts)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 10)
     .map(([name, value]) => ({ name, value }));
 
@@ -265,7 +265,7 @@ export async function getPlatformAnalytics() {
       rejected: jobs.filter(j => j.rejected === 'yes').length,
       featured: featuredJobs,
       byCategory: Object.entries(jobsByCategory)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10)
         .map(([name, value]) => ({ name, value })),
       newLast30Days: newJobsLast30,
@@ -309,7 +309,7 @@ export async function getPlatformAnalytics() {
       last30Days: resumesLast30Days,
       byType: Object.entries(resumesByType).map(([name, value]) => ({ name, value })),
       byTemplate: Object.entries(resumesByTemplate)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 10)
         .map(([name, value]) => ({ name, value })),
     },

@@ -114,18 +114,18 @@ export async function getCreditAnalytics() {
     }, {} as Record<string, { count: number; total: number }>);
 
   const topUsageCategories = Object.entries(usageByCategory)
-    .sort(([, a], [, b]) => b.total - a.total)
+    .sort(([, a], [, b]) => (b as { count: number; total: number }).total - (a as { count: number; total: number }).total)
     .slice(0, 10)
-    .map(([name, data]) => ({ name, value: data.total }));
+    .map(([name, data]) => ({ name, value: (data as { count: number; total: number }).total }));
 
   return {
     totalTransactions: transactions.length,
     creditsAdded,
     creditsUsed,
     netCredits: creditsAdded - creditsUsed,
-    typeDistribution: Object.entries(typeDistribution).map(([name, value]) => ({ name, value })),
-    volumeHistory: Object.entries(volumeByMonth).map(([date, count]) => ({ date, "Transactions": count })),
-    flowHistory: Object.values(flowByMonth),
+    typeDistribution: Object.entries(typeDistribution).map(([name, value]) => ({ name, value: value as number })),
+    volumeHistory: Object.entries(volumeByMonth).map(([date, count]) => ({ date, "Transactions": count as number })),
+    flowHistory: Object.values(flowByMonth) as { date: string; "Credits Added": number; "Credits Used": number }[],
     topUsageCategories,
   };
 }

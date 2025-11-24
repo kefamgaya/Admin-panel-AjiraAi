@@ -185,7 +185,7 @@ export async function getEarningsAnalytics() {
 
     const revenueSourceDistribution = Object.entries(revenueBySource).map(([name, value]) => ({
       name: name.replace("_", " ").replace(/\b\w/g, (l: string) => l.toUpperCase()),
-      value,
+      value: value as number,
     }));
 
     // AdMob specific metrics
@@ -263,8 +263,8 @@ export async function getEarningsAnalytics() {
     const topRevenueSources = Object.entries(revenueBySource)
       .map(([name, amount]) => ({
         name: name.replace("_", " ").replace(/\b\w/g, (l: string) => l.toUpperCase()),
-        amount,
-        percentage: totalEarnings > 0 ? (amount / totalEarnings) * 100 : 0,
+        amount: amount as number,
+        percentage: totalEarnings > 0 ? ((amount as number) / totalEarnings) * 100 : 0,
       }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
