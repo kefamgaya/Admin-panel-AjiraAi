@@ -2,22 +2,8 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { firebaseAdmin } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
-
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error) {
-    console.error("Firebase admin initialization error:", error);
-  }
-}
 
 interface SendNotificationParams {
   title: string;
@@ -177,13 +163,18 @@ export async function sendNotification(params: SendNotificationParams) {
       }
     }
 
+    // Check if Firebase Admin is initialized
+    if (!firebaseAdmin.apps.length) {
+      return { success: false, error: "Firebase Admin not initialized. Please check environment variables." };
+    }
+
     // Send in batches
     const tokenStrings = validTokens.map(t => t.token);
     for (let i = 0; i < tokenStrings.length; i += batchSize) {
       const tokens = tokenStrings.slice(i, i + batchSize);
 
       try {
-        const response = await admin.messaging().sendEachForMulticast({
+        const response = await firebaseAdmin.messaging().sendEachForMulticast({
           ...fcmPayload,
           tokens,
         });

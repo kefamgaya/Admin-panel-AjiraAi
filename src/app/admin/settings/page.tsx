@@ -4,6 +4,9 @@ import { PlatformSettings } from "@/components/admin/settings/PlatformSettings";
 import { EmailSettings } from "@/components/admin/settings/EmailSettings";
 import { getSettings } from "@/app/actions/settings";
 
+// Force dynamic rendering since this page uses cookies
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   try {
     const { success, settings, error } = await getSettings();
