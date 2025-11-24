@@ -29,6 +29,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useDebouncedCallback } from "use-debounce";
 import { format } from "date-fns";
 import { updateUserAccountType, toggleUserBlockStatus } from "@/app/actions/user-management";
+import { DateRangeFilter } from "./DateRangeFilter";
 
 interface Seeker {
   uid: string;
@@ -64,7 +65,7 @@ export default function SeekersTable({
   itemsPerPage
 }: { 
   data: Seeker[],
-  searchParams: { q?: string; page?: string },
+  searchParams: { q?: string; page?: string; startDate?: string; endDate?: string; range?: string },
   totalCount: number,
   currentPage: number,
   itemsPerPage: number
@@ -134,7 +135,12 @@ export default function SeekersTable({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <Title>Job Seekers</Title>
-            <Text>List of all registered job seekers ({totalCount} total)</Text>
+            <Text>
+              {searchParams.startDate && searchParams.endDate 
+                ? `Filtered results (${totalCount} users in selected range)`
+                : `List of all registered job seekers (${totalCount} total)`
+              }
+            </Text>
           </div>
           <div className="w-full sm:w-64">
             <TextInput
@@ -147,6 +153,11 @@ export default function SeekersTable({
               defaultValue={searchParams.q}
             />
           </div>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="mb-6">
+          <DateRangeFilter />
         </div>
 
         <Table>

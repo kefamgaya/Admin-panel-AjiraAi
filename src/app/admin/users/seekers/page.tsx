@@ -6,7 +6,7 @@ import { getUserAnalytics } from "@/app/actions/user-analytics";
 export default async function SeekersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; startDate?: string; endDate?: string; range?: string }>;
 }) {
   const supabase = await createClient();
   const params = await searchParams;
@@ -25,6 +25,13 @@ export default async function SeekersPage({
 
   if (query) {
     dbQuery = dbQuery.or(`name.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%`);
+  }
+
+  // Apply date range filter if provided
+  if (params.startDate && params.endDate) {
+    dbQuery = dbQuery
+      .gte("registration_date", params.startDate)
+      .lte("registration_date", params.endDate);
   }
 
   // Apply ordering and pagination after filtering
