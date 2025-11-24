@@ -24,7 +24,11 @@ async function getAdMobAccountId(accessToken: string): Promise<string> {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get accounts: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Failed to get AdMob accounts: ${response.status} ${response.statusText}`, errorText);
+      // Fallback to publisher ID if API call fails
+      const publisherId = process.env.ADMOB_PUBLISHER_ID || "";
+      return publisherId.startsWith("pub-") ? publisherId : `pub-${publisherId.replace("pub-", "")}`;
     }
 
     const data = await response.json();
@@ -40,16 +44,26 @@ async function getAdMobAccountId(accessToken: string): Promise<string> {
     if (accounts.length > 0) {
       const account = accounts[0];
       // Account name is like "accounts/pub-1644643871385985", we need "pub-1644643871385985"
-      return account.name ? account.name.replace('accounts/', '') : account.publisherId || `pub-${process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "")}`;
+      const accountId = account.name ? account.name.replace('accounts/', '') : account.publisherId;
+      if (accountId) {
+        return accountId;
+      }
     }
     
     // Fallback: use publisher ID with "pub-" prefix
     const publisherId = process.env.ADMOB_PUBLISHER_ID || "";
+    if (!publisherId) {
+      throw new Error("ADMOB_PUBLISHER_ID environment variable is not set");
+    }
     return publisherId.startsWith("pub-") ? publisherId : `pub-${publisherId.replace("pub-", "")}`;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error getting AdMob account ID:", error);
     // Fallback: use publisher ID with "pub-" prefix
     const publisherId = process.env.ADMOB_PUBLISHER_ID || "";
+    if (!publisherId) {
+      console.error("ADMOB_PUBLISHER_ID not configured, cannot fetch AdMob data");
+      throw new Error("AdMob publisher ID not configured");
+    }
     return publisherId.startsWith("pub-") ? publisherId : `pub-${publisherId.replace("pub-", "")}`;
   }
 }
@@ -98,6 +112,10 @@ export async function getAllTimeAdMobEarnings(): Promise<number> {
   } catch (error: any) {
     console.error("Error fetching AdMob all-time earnings:", error);
     console.error("Error details:", error?.message, error?.stack);
+    // Log more details for debugging
+    if (error?.response) {
+      console.error("AdMob API response error:", await error.response.text());
+    }
     return 0; // Return 0 on error, will fall back to database
   }
 }
@@ -275,7 +293,15 @@ export async function getEarningsAnalytics() {
     }
 
     // Fetch real AdMob all-time earnings from API
-    const admobAllTimeFromAPI = await getAllTimeAdMobEarnings();
+    // Wrap in try-catch to prevent page crash if AdMob API fails
+    let admobAllTimeFromAPI = 0;
+    try {
+      admobAllTimeFromAPI = await getAllTimeAdMobEarnings();
+    } catch (admobError: any) {
+      console.error("Error fetching AdMob earnings from API:", admobError);
+      // Continue with database earnings if API fails
+      admobAllTimeFromAPI = 0;
+    }
     
     // Calculate totals
     // Separate AdMob earnings from other earnings
@@ -426,9 +452,11 @@ export async function getEarningsAnalytics() {
       earningsGrowth,
       topRevenueSources,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in getEarningsAnalytics:", error);
-    // Return safe empty data
+    console.error("Error details:", error?.message, error?.stack);
+    // Return safe empty data instead of throwing to prevent page crash
+    // The page will show zeros but won't crash
     return {
         totalEarnings: 0,
         earningsLast30Days: 0,

@@ -4,15 +4,25 @@ import { getEarningsAnalytics } from "@/app/actions/earnings-analytics";
 import { EarningsAnalytics } from "@/components/admin/earnings/EarningsAnalytics";
 import { SyncAdMobButton } from "@/components/admin/earnings/SyncAdMobButton";
 
+// Force dynamic rendering to prevent RSC 404 errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export default async function EarningsPage() {
   let analyticsData;
   let error: string | null = null;
 
   try {
     analyticsData = await getEarningsAnalytics();
+    
+    // If analytics data is null or has zero values, it might indicate an error
+    if (!analyticsData) {
+      error = "Failed to load earnings data. Please check server logs for details.";
+    }
   } catch (err: any) {
     console.error("Error fetching earnings data:", err);
-    error = `Failed to load earnings data: ${err.message || "Unknown error"}`;
+    console.error("Error stack:", err?.stack);
+    error = `Failed to load earnings data: ${err.message || "Unknown error"}. Please check that AdMob credentials are configured correctly.`;
   }
 
   return (
