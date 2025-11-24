@@ -21,6 +21,8 @@ export async function getAllTimeAdMobEarnings(): Promise<number> {
       return 0;
     }
 
+    console.log("Fetching AdMob all-time earnings for app:", AJIRA_APP_ID);
+
     // Fetch all-time AdMob earnings for specific app (from app launch date, using a very early date)
     const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
     // AdMob typically has data from when the app was first published
@@ -28,6 +30,8 @@ export async function getAllTimeAdMobEarnings(): Promise<number> {
     const allTimeStartDate = new Date();
     allTimeStartDate.setFullYear(allTimeStartDate.getFullYear() - 5);
     const allTimeEndDate = new Date();
+
+    console.log(`Fetching AdMob data from ${allTimeStartDate.toISOString()} to ${allTimeEndDate.toISOString()}`);
 
     const admobReportData = await fetchAdMobEarnings(
       publisherId,
@@ -37,10 +41,14 @@ export async function getAllTimeAdMobEarnings(): Promise<number> {
       AJIRA_APP_ID // Filter by specific app ID
     );
 
+    const totalEarnings = admobReportData.reduce((sum, row) => sum + row.earnings, 0);
+    console.log(`AdMob all-time earnings fetched: $${totalEarnings.toFixed(2)} from ${admobReportData.length} data points`);
+
     // Sum all AdMob earnings from the report
-    return admobReportData.reduce((sum, row) => sum + row.earnings, 0);
-  } catch (error) {
+    return totalEarnings;
+  } catch (error: any) {
     console.error("Error fetching AdMob all-time earnings:", error);
+    console.error("Error details:", error?.message, error?.stack);
     return 0; // Return 0 on error, will fall back to database
   }
 }

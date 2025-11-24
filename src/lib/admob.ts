@@ -102,32 +102,59 @@ export async function fetchAdMobEarnings(
       throw new Error(`AdMob API Error: ${response.statusText}`);
     }
 
-    // Response is a stream of JSON objects, but for simple reports it's usually an array in the first object or list
-    // The API returns an array of objects, each containing a 'row'
-    const data = await response.json();
+    // AdMob API returns a streaming JSON response
+    // The response can be:
+    // 1. A JSON object with a "rows" array: { rows: [{ row: {...} }] }
+    // 2. A JSON array directly: [{ row: {...} }]
+    // 3. A stream of JSON objects (newline-delimited)
     
-    // AdMob API response structure is a bit complex. It returns a list of rows.
-    // Example: [{ row: { dimensionValues: { DATE: { value: '20230101' } }, metricValues: { IMPRESSIONS: { integerValue: 100 }, ... } } }]
+    const text = await response.text();
+    let data: any;
     
-    if (!Array.isArray(data)) {
-      // Sometimes it returns a single object with footer?
-      // Let's handle standard response which is an array of rows.
-      // Actually, generate returns a stream, but fetch might buffer it?
-      // If using node-fetch or standard fetch, it returns the body. 
-      // The response body is a JSON array if it's small enough.
+    try {
+      // Try parsing as JSON first
+      data = JSON.parse(text);
+    } catch (e) {
+      // If not valid JSON, it might be a stream of JSON objects (NDJSON)
+      // Parse line by line
+      const lines = text.trim().split('\n').filter(line => line.trim());
+      const parsedLines = lines.map(line => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
       
-      // Let's assume standard JSON response for now.
-      // If empty, it might be empty array.
+      if (parsedLines.length > 0) {
+        data = parsedLines;
+      } else {
+        console.error("Failed to parse AdMob response:", text.substring(0, 500));
+        return [];
+      }
+    }
+    
+    // Handle different response structures
+    let rows: any[] = [];
+    
+    if (Array.isArray(data)) {
+      // Direct array of row objects
+      rows = data;
+    } else if (data.rows && Array.isArray(data.rows)) {
+      // Object with rows property
+      rows = data.rows;
+    } else if (data.row) {
+      // Single row object
+      rows = [{ row: data.row }];
+    } else {
+      console.warn("Unexpected AdMob response structure:", JSON.stringify(data).substring(0, 500));
       return [];
     }
 
     // Parse rows
-    // Note: The actual response from networkReport:generate is a JSON array of entries.
-    // Each entry has `row` or `footer`.
-    
     const reportData: AdMobReportData[] = [];
 
-    for (const item of data) {
+    for (const item of rows) {
       if (item.row) {
         const dateStr = item.row.dimensionValues?.DATE?.value; // "YYYYMMDD"
         if (!dateStr) continue; // Skip if no date
@@ -152,6 +179,7 @@ export async function fetchAdMobEarnings(
       }
     }
 
+    console.log(`AdMob API: Fetched ${reportData.length} rows, total earnings: $${reportData.reduce((sum, r) => sum + r.earnings, 0).toFixed(2)}`);
     return reportData;
   } catch (error) {
     console.error("Error processing AdMob report:", error);
