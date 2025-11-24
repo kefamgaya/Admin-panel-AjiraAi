@@ -83,7 +83,7 @@ export async function fetchAdMobEarnings(
               {
                 dimension: "APP",
                 matchesAny: {
-                  values: [{ value: appId }],
+                  values: [appId],
                 },
               },
             ],
