@@ -47,10 +47,10 @@ export async function sendNotification(params: SendNotificationParams) {
       const limit = 1000;
 
       while (true) {
-        // Select must come before range in Supabase queries
-        const { data, error, count } = await queryBuilder
-          .select("uid", { count: "exact" })
-          .range(offset, offset + limit - 1);
+        // Clone the query builder and add select/range for pagination
+        // If queryBuilder already has select(), use it directly, otherwise add select
+        const query = queryBuilder.select("uid", { count: "exact" });
+        const { data, error, count } = await query.range(offset, offset + limit - 1);
 
         if (error) {
           console.error("Error fetching recipients:", error);
@@ -87,13 +87,15 @@ export async function sendNotification(params: SendNotificationParams) {
     } else if (recipientType === "seekers") {
       // Fetch job seekers with pagination
       // Use accounttype instead of role for seekers
-      const queryBuilder = supabase.from("all_users").eq("accounttype", "seeker");
+      // Need to call select() first to get the proper query builder type
+      const queryBuilder = supabase.from("all_users").select("uid").eq("accounttype", "seeker");
       targetUids = await fetchAllRecipients(queryBuilder);
     } else if (recipientType === "companies") {
       // Fetch companies with pagination
       // Companies might be in all_users with accounttype='employer' or in companies table
       // Try all_users first with employer accounttype
-      const queryBuilder = supabase.from("all_users").eq("accounttype", "employer");
+      // Need to call select() first to get the proper query builder type
+      const queryBuilder = supabase.from("all_users").select("uid").eq("accounttype", "employer");
       targetUids = await fetchAllRecipients(queryBuilder);
     }
 
