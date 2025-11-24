@@ -27,6 +27,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Clear any caches to avoid stale file references
+RUN rm -rf .next .turbo node_modules/.cache 2>/dev/null || true
+
 # Build the application
 RUN pnpm build
 
