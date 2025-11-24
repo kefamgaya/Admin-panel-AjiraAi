@@ -9,13 +9,13 @@ if (!admin.apps.length) {
 
     // Only initialize if all required credentials are present
     if (projectId && clientEmail && privateKey) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
+    admin.initializeApp({
+      credential: admin.credential.cert({
           projectId,
           clientEmail,
           privateKey: privateKey.replace(/\\n/g, '\n'),
-        }),
-      });
+      }),
+    });
     } else {
       // In build time, env vars might not be available - that's okay
       // Don't log warnings during build phase
@@ -28,7 +28,7 @@ if (!admin.apps.length) {
     // Silently fail during build time
     const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
     if (!isBuildPhase) {
-      console.error('Firebase admin initialization error', error);
+    console.error('Firebase admin initialization error', error);
     }
   }
 }

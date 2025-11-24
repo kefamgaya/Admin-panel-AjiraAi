@@ -13,7 +13,7 @@ import { DollarSign, TrendingUp, TrendingDown, Users, Gift, CreditCard } from "l
 
 export function FinanceTab({ data }: { data: any }) {
   const { finance } = data;
-  
+
   // Calculate safe percentages and averages
   const revenuePercentage = finance.totalRevenue > 0 
     ? (finance.revenueLastMonth / finance.totalRevenue) * 100 

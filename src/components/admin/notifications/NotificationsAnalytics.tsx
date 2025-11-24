@@ -19,12 +19,15 @@ import {
   Eye, 
   CheckCircle,
   TrendingUp,
+  TrendingDown,
   Users,
-  Award
+  Award,
+  UserPlus,
+  UserMinus
 } from "lucide-react";
 
 export function NotificationsAnalytics({ data }: { data: any }) {
-  const { overview, engagement, recipientTypes, growth, topSenders } = data;
+  const { overview, engagement, subscribers, recipientTypes, growth, subscriberGrowth, topSenders } = data;
 
   const valueFormatter = (number: number) =>
     Intl.NumberFormat("us").format(number).toString();
@@ -87,6 +90,102 @@ export function NotificationsAnalytics({ data }: { data: any }) {
           </Text>
         </Card>
       </Grid>
+
+      {/* Subscriber Metrics */}
+      <Card>
+        <Title>Subscriber Metrics</Title>
+        <Text className="mb-4">FCM token subscribers and growth</Text>
+        <Grid numItems={1} numItemsSm={2} numItemsLg={4} className="gap-6">
+          <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-5 h-5 text-cyan-500" />
+              <Text className="font-medium">Total Subscribers</Text>
+            </div>
+            <Metric className="text-3xl text-cyan-600">
+              {subscribers?.totalSubscribers?.toLocaleString() || 0}
+            </Metric>
+            <Text className="text-xs text-gray-500 mt-2">
+              Users with FCM tokens
+            </Text>
+          </div>
+
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <UserPlus className="w-5 h-5 text-emerald-500" />
+              <Text className="font-medium">New Subscribers</Text>
+            </div>
+            <Metric className="text-3xl text-emerald-600">
+              {subscribers?.newSubscribersLast30Days?.toLocaleString() || 0}
+            </Metric>
+            <div className="flex items-center gap-1 mt-2">
+              {parseFloat(subscribers?.subscriberGrowthRate || "0") >= 0 ? (
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              )}
+              <Text className={`text-xs ${parseFloat(subscribers?.subscriberGrowthRate || "0") >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                {subscribers?.subscriberGrowthRate || "0.0"}% growth (30 days)
+              </Text>
+            </div>
+          </div>
+
+          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <UserMinus className="w-5 h-5 text-rose-500" />
+              <Text className="font-medium">Unsubscribe Rate</Text>
+            </div>
+            <Metric className="text-3xl text-rose-600">
+              {subscribers?.unsubscribeRate || "0.0"}%
+            </Metric>
+            <ProgressBar 
+              value={parseFloat(subscribers?.unsubscribeRate || "0")} 
+              color="rose"
+              className="mt-3"
+            />
+            <Text className="text-xs text-gray-500 mt-1">
+              {subscribers?.unsubscribedUsers || 0} of {subscribers?.totalUsers || 0} users
+            </Text>
+          </div>
+
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-blue-500" />
+              <Text className="font-medium">Subscription Rate</Text>
+            </div>
+            <Metric className="text-3xl text-blue-600">
+              {subscribers?.totalUsers > 0 
+                ? ((subscribers?.totalSubscribers / subscribers?.totalUsers) * 100).toFixed(1)
+                : "0.0"}%
+            </Metric>
+            <ProgressBar 
+              value={subscribers?.totalUsers > 0 
+                ? (subscribers?.totalSubscribers / subscribers?.totalUsers) * 100
+                : 0} 
+              color="blue"
+              className="mt-3"
+            />
+            <Text className="text-xs text-gray-500 mt-1">
+              Active subscribers
+            </Text>
+          </div>
+        </Grid>
+      </Card>
+
+      {/* Subscriber Growth Chart */}
+      {subscriberGrowth && subscriberGrowth.length > 0 && (
+        <Card>
+          <Title>Subscriber Growth</Title>
+          <Text className="mb-4">New subscribers over time</Text>
+          <AreaChart
+            className="h-72"
+            data={subscriberGrowth}
+            index="month"
+            categories={["subscribers"]}
+            colors={["cyan"]}
+            valueFormatter={valueFormatter}
+          />
+        </Card>
+      )}
 
       {/* Growth Chart */}
       <Card>

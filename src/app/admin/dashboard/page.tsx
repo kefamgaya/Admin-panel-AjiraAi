@@ -3,6 +3,10 @@ import DashboardContent from "@/components/admin/dashboard/DashboardContent";
 import { subDays, startOfDay, endOfDay, format } from "date-fns";
 import { getAllTimeAdMobEarnings } from "@/app/actions/earnings-analytics";
 
+// Force dynamic rendering to prevent RSC 404 errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 // Helper function to fetch all data with pagination
 async function fetchAllData(queryBuilder: any) {
   let allData: any[] = [];
@@ -173,7 +177,7 @@ export default async function DashboardPage() {
 
   // Fetch real AdMob all-time earnings from API
   const admobAllTimeFromAPI = await getAllTimeAdMobEarnings();
-  
+
   // Calculate revenue from earnings table
   // Separate AdMob earnings from other earnings
   const admobEarningsFromDB = earningsResult.data

@@ -5,6 +5,10 @@ import { NotificationsTable } from "@/components/admin/notifications/Notificatio
 import { SendNotificationForm } from "@/components/admin/notifications/SendNotificationForm";
 import { getNotificationAnalytics } from "@/app/actions/notification-analytics";
 
+// Force dynamic rendering to prevent RSC 404 errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export default async function NotificationsPage({
   searchParams,
 }: {

@@ -189,7 +189,7 @@ export default function RegisterPage() {
               <div>
                 <p className="font-semibold mb-1">Secure & reliable</p>
                 <p className="text-sm opacity-80">Enterprise-grade security and monitoring</p>
-              </div>
+      </div>
             </div>
           </div>
 
@@ -206,112 +206,112 @@ export default function RegisterPage() {
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <p className="text-sm font-medium text-green-500 uppercase tracking-wider">ADMIN PORTAL</p>
-            </div>
+          </div>
             <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
             <p className="text-gray-400">Sign up to start managing the platform</p>
-          </div>
+        </div>
 
-          {error && (
+        {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
               <p className="text-sm text-red-400">{error}</p>
             </div>
-          )}
+        )}
 
-          {success && (
+        {success && (
             <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
               <p className="text-sm text-green-400">Account created successfully! Redirecting to login...</p>
             </div>
-          )}
+        )}
 
           <form onSubmit={handleRegister} className="space-y-6">
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-white mb-2">
-                Full Name
-              </label>
+              Full Name
+            </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  required
+              id="fullName"
+              name="fullName"
+              type="text"
+              placeholder="John Doe"
+              value={formData.fullName}
+              onChange={handleChange}
+              required
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+            />
               </div>
-            </div>
+          </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
                 Email
-              </label>
+            </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
+              id="email"
+              name="email"
+              type="email"
                   placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
+              value={formData.email}
+              onChange={handleChange}
+              required
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+            />
               </div>
-            </div>
+          </div>
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-white mb-2">
-                Role
-              </label>
+              Role
+            </label>
               <select
                 id="role"
                 name="role"
-                value={formData.role}
+              value={formData.role}
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
+            >
                 <option value="admin">Admin</option>
                 <option value="super_admin">Super Admin</option>
               </select>
-            </div>
+          </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
-                Password
-              </label>
+              Password
+            </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              required
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+            />
               </div>
-            </div>
+          </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-white mb-2">
-                Confirm Password
-              </label>
+              Confirm Password
+            </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
@@ -321,7 +321,7 @@ export default function RegisterPage() {
               type="submit"
               disabled={loading || success}
               className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          >
               {loading ? "Creating Account..." : success ? "Account Created!" : "Create Account"}
             </button>
           </form>

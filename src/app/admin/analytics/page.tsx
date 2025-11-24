@@ -1,6 +1,10 @@
 import { getPlatformAnalytics } from "@/app/actions/platform-analytics";
 import { AnalyticsTabs } from "@/components/admin/analytics/AnalyticsTabs";
 
+// Force dynamic rendering to prevent RSC 404 errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export default async function AnalyticsPage() {
   const analyticsData = await getPlatformAnalytics();
 

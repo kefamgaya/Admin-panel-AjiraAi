@@ -144,38 +144,38 @@ export default function LoginPage() {
             </div>
             <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
             <p className="text-gray-400">Sign in to manage your hiring pipeline</p>
-          </div>
+        </div>
 
-          {error && (
+        {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
               <p className="text-sm text-red-400">{error}</p>
             </div>
-          )}
+        )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
                 Email
-              </label>
+            </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="email"
-                  type="email"
+              id="email"
+              type="email"
                   placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+            />
               </div>
-            </div>
+          </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="password" className="block text-sm font-medium text-white">
-                  Password
-                </label>
+              Password
+            </label>
                 <a href="#" className="text-sm text-green-500 hover:text-green-400">
                   Forgot Password?
                 </a>
@@ -183,25 +183,25 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+            />
               </div>
-            </div>
+          </div>
 
             <button
-              type="submit"
+            type="submit"
               disabled={loading}
               className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Signing in..." : "Sign In"}
+          >
+            {loading ? "Signing in..." : "Sign In"}
             </button>
-          </form>
+        </form>
 
           <div className="mt-6">
             <div className="relative">

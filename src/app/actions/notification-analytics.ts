@@ -48,10 +48,18 @@ export async function getNotificationAnalytics() {
       "id, title, message, recipient_type, recipient_uids, sent_at, sent_by, delivery_count, read_count"
     );
 
+    // Fetch all users with FCM tokens (subscribers)
+    const allUsers = await fetchAllData(
+      supabase,
+      "all_users",
+      "uid, token, registration_date"
+    );
+
     const now = new Date();
     const last30Days = subMonths(now, 1);
     const last7Days = new Date();
     last7Days.setDate(now.getDate() - 7);
+    const previous30Days = subMonths(now, 2);
 
     // Basic metrics
     const totalNotifications = notifications.length;
@@ -152,6 +160,56 @@ export async function getNotificationAnalytics() {
       ? ((totalRead / totalDelivered) * 100).toFixed(1)
       : "0";
 
+    // Subscriber metrics (users with FCM tokens)
+    const totalSubscribers = allUsers.filter(u => u.token && u.token.length > 10).length;
+    
+    // Subscribers in last 30 days (new subscribers)
+    const newSubscribersLast30Days = allUsers.filter(u => {
+      if (!u.token || u.token.length <= 10) return false;
+      if (!u.registration_date) return false;
+      const regDate = new Date(u.registration_date);
+      return regDate >= last30Days;
+    }).length;
+
+    // Subscribers in previous 30 days (for growth calculation)
+    const subscribersPrevious30Days = allUsers.filter(u => {
+      if (!u.token || u.token.length <= 10) return false;
+      if (!u.registration_date) return false;
+      const regDate = new Date(u.registration_date);
+      return regDate >= previous30Days && regDate < last30Days;
+    }).length;
+
+    // Calculate subscriber growth rate
+    const subscriberGrowthRate = subscribersPrevious30Days > 0
+      ? (((newSubscribersLast30Days - subscribersPrevious30Days) / subscribersPrevious30Days) * 100).toFixed(1)
+      : newSubscribersLast30Days > 0 ? "100.0" : "0.0";
+
+    // Calculate unsubscribe rate (users without tokens)
+    const totalUsers = allUsers.length;
+    const unsubscribedUsers = totalUsers - totalSubscribers;
+    const unsubscribeRate = totalUsers > 0
+      ? ((unsubscribedUsers / totalUsers) * 100).toFixed(1)
+      : "0.0";
+
+    // Monthly subscriber growth (last 6 months)
+    const monthlySubscriberGrowth = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = startOfMonth(subMonths(now, i));
+      const monthEnd = i === 0 ? now : startOfMonth(subMonths(now, i - 1));
+      
+      const monthSubscribers = allUsers.filter(u => {
+        if (!u.token || u.token.length <= 10) return false;
+        if (!u.registration_date) return false;
+        const regDate = new Date(u.registration_date);
+        return regDate >= monthStart && regDate < monthEnd;
+      }).length;
+
+      monthlySubscriberGrowth.push({
+        month: format(monthStart, "MMM yyyy"),
+        subscribers: monthSubscribers,
+      });
+    }
+
     return {
       overview: {
         totalNotifications,
@@ -168,10 +226,19 @@ export async function getNotificationAnalytics() {
         totalDelivered,
         totalRead,
       },
+      subscribers: {
+        totalSubscribers,
+        newSubscribersLast30Days,
+        subscriberGrowthRate,
+        unsubscribeRate,
+        totalUsers,
+        unsubscribedUsers,
+      },
       recipientTypes: Object.entries(recipientTypeDistribution)
         .map(([name, value]) => ({ name, value: value as number }))
         .sort((a, b) => b.value - a.value),
       growth: monthlyGrowth,
+      subscriberGrowth: monthlySubscriberGrowth,
       topSenders,
     };
   } catch (error) {

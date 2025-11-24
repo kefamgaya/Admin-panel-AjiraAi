@@ -24,7 +24,7 @@ export default async function LocationsPage({
   const from = (page - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
   const activeTab = params.tab === 'districts' ? 'districts' : 'regions';
-  
+
   // Get selected country or default to Tanzania
   const selectedCountry = (params.country as CountryCode) || 'tanzania';
   const countryConfig = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[3]; // Default to Tanzania
