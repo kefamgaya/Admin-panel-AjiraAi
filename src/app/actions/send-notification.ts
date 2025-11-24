@@ -47,9 +47,10 @@ export async function sendNotification(params: SendNotificationParams) {
       const limit = 1000;
 
       while (true) {
+        // Select must come before range in Supabase queries
         const { data, error, count } = await queryBuilder
-          .range(offset, offset + limit - 1)
-          .select("uid", { count: "exact" });
+          .select("uid", { count: "exact" })
+          .range(offset, offset + limit - 1);
 
         if (error) {
           console.error("Error fetching recipients:", error);
@@ -85,12 +86,14 @@ export async function sendNotification(params: SendNotificationParams) {
       targetUids = await fetchAllRecipients(queryBuilder);
     } else if (recipientType === "seekers") {
       // Fetch job seekers with pagination
-      const baseQuery = supabase.from("all_users").select("*");
-      const queryBuilder = baseQuery.eq("role", "seeker") as any;
+      // Use accounttype instead of role for seekers
+      const queryBuilder = supabase.from("all_users").eq("accounttype", "seeker");
       targetUids = await fetchAllRecipients(queryBuilder);
     } else if (recipientType === "companies") {
       // Fetch companies with pagination
-      const queryBuilder = supabase.from("companies");
+      // Companies might be in all_users with accounttype='employer' or in companies table
+      // Try all_users first with employer accounttype
+      const queryBuilder = supabase.from("all_users").eq("accounttype", "employer");
       targetUids = await fetchAllRecipients(queryBuilder);
     }
 
