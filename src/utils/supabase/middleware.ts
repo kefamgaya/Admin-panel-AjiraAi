@@ -71,25 +71,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Check if admin registration is enabled
-  const registrationEnabled = await isAdminRegistrationEnabled(request);
-
   // Allow access to login and register pages without authentication
-  const publicAdminRoutes = ['/admin/login']
-  if (registrationEnabled) {
-    publicAdminRoutes.push('/admin/register')
-  }
+  // Registration is now always enabled - no restrictions
+  const publicAdminRoutes = ['/admin/login', '/admin/register']
   
   const isPublicRoute = publicAdminRoutes.some(route => 
     request.nextUrl.pathname.startsWith(route)
   )
-
-  // Block access to registration page if disabled
-  if (request.nextUrl.pathname === '/admin/register' && !registrationEnabled) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/admin/login'
-    return NextResponse.redirect(url)
-  }
 
   if (request.nextUrl.pathname.startsWith('/admin') && !isPublicRoute) {
     if (!user) {

@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Card, TextInput, Button, Title, Text, Callout } from "@tremor/react";
-import { Lock, Mail, AlertCircle } from "lucide-react";
-import { isAdminRegistrationEnabled } from "@/app/actions/check-admin-registration";
+import { Lock, Mail, ArrowRight, Users } from "lucide-react";
 import Link from "next/link";
 
 // Force dynamic rendering to avoid build-time errors
-// Note: For client components, we also need to handle client creation lazily
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
@@ -18,32 +15,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [registrationEnabled, setRegistrationEnabled] = useState<boolean>(false);
   const router = useRouter();
   
   // Lazy initialization of Supabase client to avoid build-time errors
-  // Only create client in browser environment
   const getSupabaseClient = () => {
     if (typeof window === 'undefined') {
-      return null; // Don't create client during SSR/build
+      return null;
     }
     try {
       return createClient();
     } catch (err) {
-      // During build, env vars might not be available
       console.error('Failed to create Supabase client:', err);
       return null;
     }
   };
-
-  useEffect(() => {
-    // Check if admin registration is enabled
-    const checkRegistrationStatus = async () => {
-      const enabled = await isAdminRegistrationEnabled();
-      setRegistrationEnabled(enabled);
-    };
-    checkRegistrationStatus();
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,82 +60,179 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 dark:bg-slate-900">
-      <Card className="max-w-md w-full mx-auto">
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 bg-accent-100 rounded-full flex items-center justify-center mb-4 text-accent-600 dark:bg-accent-900/30 dark:text-accent-400">
-            <Lock className="w-6 h-6" />
-          </div>
-          <Title className="text-center">Admin Login</Title>
-          <Text className="text-center">Sign in to access the dashboard</Text>
+    <div className="min-h-screen flex">
+      {/* Left Section - Green Background */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-500 to-green-600 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}></div>
+        </div>
+        
+        {/* Blurred silhouettes effect */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-20 left-10 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-white rounded-full blur-3xl"></div>
         </div>
 
-        {error && (
-          <Callout
-            className="mb-6"
-            title="Authentication Failed"
-            icon={AlertCircle}
-            color="rose"
-          >
-            {error}
-          </Callout>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="email">
-              Email Address
-            </label>
-            <TextInput
-              id="email"
-              type="email"
-              placeholder="admin@ajira.ai"
-              icon={Mail}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        <div className="relative z-10 flex flex-col justify-center px-12 text-white">
+          <div className="mb-8">
+            <p className="text-sm font-medium uppercase tracking-wider opacity-90 mb-2">ADMIN PORTAL</p>
+            <h1 className="text-5xl font-bold mb-4">Welcome Back</h1>
+            <p className="text-xl opacity-90">Sign in to manage your platform</p>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="password">
-              Password
-            </label>
-            <TextInput
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              icon={Lock}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <div className="space-y-6 mt-8">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0"></div>
+              <div>
+                <p className="font-semibold mb-1">AI-powered analytics</p>
+                <p className="text-sm opacity-80">Real-time insights and data-driven decisions</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0"></div>
+              <div>
+                <p className="font-semibold mb-1">Complete control</p>
+                <p className="text-sm opacity-80">Manage users, jobs, and platform settings</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0"></div>
+              <div>
+                <p className="font-semibold mb-1">Secure & reliable</p>
+                <p className="text-sm opacity-80">Enterprise-grade security and monitoring</p>
+              </div>
+            </div>
           </div>
 
-          <Button
-            type="submit"
-            loading={loading}
-            className="w-full mt-2"
-            size="lg"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
+          <div className="mt-12 pt-8 border-t border-white/20">
+            <p className="text-sm opacity-80">Join leading administrators using Ajira AI to manage the platform</p>
+          </div>
+        </div>
+      </div>
 
-        {registrationEnabled && (
-          <div className="text-center mt-4">
-            <Text className="text-sm text-slate-600 dark:text-slate-400">
-              Need an admin account?{" "}
-              <Link
-                href="/admin/register"
-                className="text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300 font-medium"
-              >
-                Register here
+      {/* Right Section - Dark Background */}
+      <div className="w-full lg:w-1/2 bg-gray-900 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <p className="text-sm font-medium text-green-500 uppercase tracking-wider">ADMIN PORTAL</p>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
+            <p className="text-gray-400">Sign in to manage your hiring pipeline</p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-white">
+                  Password
+                </label>
+                <a href="#" className="text-sm text-green-500 hover:text-green-400">
+                  Forgot Password?
+                </a>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-700"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gray-900 text-gray-400">Or</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="mt-6 w-full flex items-center justify-center gap-3 bg-gray-800 hover:bg-gray-750 text-white font-medium py-3 rounded-lg border border-gray-700 transition-colors"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Continue with Google
+            </button>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-400">
+              New here?{" "}
+              <Link href="/admin/register" className="text-green-500 hover:text-green-400 font-medium">
+                Create account
               </Link>
-            </Text>
+            </p>
           </div>
-        )}
-      </Card>
+
+          {/* Job Seekers Section */}
+          <div className="mt-8 p-4 bg-gray-800 rounded-lg border border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                  <Users className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">Looking for a job?</p>
+                  <p className="text-sm text-gray-400">Sign in as a job seeker</p>
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
