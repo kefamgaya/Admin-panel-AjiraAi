@@ -35,15 +35,20 @@ async function isAdminRegistrationEnabled(request: NextRequest): Promise<boolean
 }
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
+  let response = NextResponse.next({
     request,
   })
 
   // Development Bypass: Always allow access to admin routes
   if (process.env.NODE_ENV === 'development') {
-    return supabaseResponse
+    return response
   }
 
+  // Check for Firebase auth token (primary authentication method)
+  const firebaseToken = request.cookies.get('firebase-auth-token')?.value;
+  const firebaseUid = request.cookies.get('firebase-uid')?.value;
+  
+  // Also check Supabase auth as fallback
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -56,11 +61,11 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({
+          response = NextResponse.next({
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           )
         },
       },
@@ -68,8 +73,11 @@ export async function updateSession(request: NextRequest) {
   )
 
   const {
-    data: { user },
+    data: { user: supabaseUser },
   } = await supabase.auth.getUser()
+
+  // User is authenticated if they have Firebase token OR Supabase session
+  const isAuthenticated = !!(firebaseToken && firebaseUid) || !!supabaseUser;
 
   // Allow access to login and register pages without authentication
   // Registration is now always enabled - no restrictions
@@ -80,7 +88,7 @@ export async function updateSession(request: NextRequest) {
   )
 
   if (request.nextUrl.pathname.startsWith('/admin') && !isPublicRoute) {
-    if (!user) {
+    if (!isAuthenticated) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/login'
       return NextResponse.redirect(url)
@@ -88,11 +96,11 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from login/register pages
-  if ((request.nextUrl.pathname === '/admin/login' || request.nextUrl.pathname === '/admin/register') && user) {
+  if ((request.nextUrl.pathname === '/admin/login' || request.nextUrl.pathname === '/admin/register') && isAuthenticated) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/dashboard'
     return NextResponse.redirect(url)
   }
 
-  return supabaseResponse
+  return response
 }

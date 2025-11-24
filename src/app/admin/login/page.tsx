@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase-client";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Lock, Mail, ArrowRight, Users } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +24,36 @@ export default function LoginPage() {
         throw new Error("Firebase authentication is not configured. Please check your environment variables.");
       }
 
-      await signInWithEmailAndPassword(auth, email, password);
+      if (!auth) {
+        throw new Error("Firebase authentication is not configured. Please check your environment variables.");
+      }
+
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Wait for auth state to be updated
+      const authInstance = auth; // Type narrowing
+      await new Promise<void>((resolve) => {
+        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+          if (user) {
+            unsubscribe();
+            resolve();
+          }
+        });
+      });
+
+      // Create a session token and store it
+      const token = await userCredential.user.getIdToken();
+      
+      // Store token in a cookie for middleware to check
+      const sessionResponse = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error("Failed to create session");
+      }
 
       router.push("/admin/dashboard");
       router.refresh();
