@@ -76,14 +76,14 @@ export async function fetchAdMobEarnings(
             startDate: formattedStartDate,
             endDate: formattedEndDate,
           },
-          dimensions: appId ? ["DATE", "APPLICATION"] : ["DATE"],
+          dimensions: appId ? ["DATE", "APP"] : ["DATE"],
           metrics: ["IMPRESSIONS", "CLICKS", "ESTIMATED_EARNINGS"],
           ...(appId && {
             dimensionFilters: [
               {
-                dimension: "APPLICATION",
+                dimension: "APP",
                 matchesAny: {
-                  values: [appId],
+                  values: [{ value: appId }],
                 },
               },
             ],
@@ -129,15 +129,17 @@ export async function fetchAdMobEarnings(
 
     for (const item of data) {
       if (item.row) {
-        const dateStr = item.row.dimensionValues.DATE.value; // "YYYYMMDD"
+        const dateStr = item.row.dimensionValues?.DATE?.value; // "YYYYMMDD"
+        if (!dateStr) continue; // Skip if no date
+        
         const year = parseInt(dateStr.substring(0, 4));
         const month = parseInt(dateStr.substring(4, 6)) - 1;
         const day = parseInt(dateStr.substring(6, 8));
         const date = new Date(year, month, day).toISOString();
 
-        const impressions = parseInt(item.row.metricValues.IMPRESSIONS.integerValue || "0");
-        const clicks = parseInt(item.row.metricValues.CLICKS.integerValue || "0");
-        const earningsMicros = parseInt(item.row.metricValues.ESTIMATED_EARNINGS.microsValue || "0");
+        const impressions = parseInt(item.row.metricValues?.IMPRESSIONS?.integerValue || "0");
+        const clicks = parseInt(item.row.metricValues?.CLICKS?.integerValue || "0");
+        const earningsMicros = parseInt(item.row.metricValues?.ESTIMATED_EARNINGS?.microsValue || "0");
         const earnings = earningsMicros / 1000000;
 
         reportData.push({
