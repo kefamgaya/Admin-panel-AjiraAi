@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { differenceInDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { getAccessToken, fetchAdMobEarnings } from "@/lib/admob";
+import { getAllTimeAdMobEarnings } from "@/app/actions/earnings-analytics";
 
 // Specific app ID for Ajira AI
 const AJIRA_APP_ID = "ca-app-pub-1644643871385985~1470724022";
@@ -88,37 +88,16 @@ export async function getPlatformAnalytics() {
   const newJobsPrevious30 = jobs.filter(j => j.Time && new Date(j.Time) >= previous30Days && new Date(j.Time) < last30Days).length;
   const jobGrowthRate = newJobsPrevious30 > 0 ? ((newJobsLast30 - newJobsPrevious30) / newJobsPrevious30) * 100 : 0;
 
-  // Fetch real AdMob all-time earnings from API
+  // Fetch real AdMob all-time earnings from API using the same function as earnings page
+  // This ensures consistency between analytics and earnings pages
   let admobAllTimeEarnings = 0;
   try {
-    const clientId = process.env.ADMOB_API_CLIENT_ID;
-    const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
-    const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
-    const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
-
-    if (clientId && clientSecret && refreshToken && publisherId) {
-      // Fetch all-time AdMob earnings (from app launch date, using a very early date)
-      const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
-      // AdMob typically has data from when the app was first published
-      // Use a date 5 years ago as start date to ensure we get all historical data
-      const allTimeStartDate = new Date();
-      allTimeStartDate.setFullYear(allTimeStartDate.getFullYear() - 5);
-      const allTimeEndDate = new Date();
-
-      const admobReportData = await fetchAdMobEarnings(
-        publisherId,
-        accessToken,
-        allTimeStartDate,
-        allTimeEndDate,
-        AJIRA_APP_ID // Filter by specific app ID
-      );
-
-      // Sum all AdMob earnings from the report
-      admobAllTimeEarnings = admobReportData.reduce((sum, row) => sum + row.earnings, 0);
-    }
+    admobAllTimeEarnings = await getAllTimeAdMobEarnings();
+    console.log(`Platform Analytics: Fetched AdMob all-time earnings: $${admobAllTimeEarnings.toFixed(2)}`);
   } catch (error) {
-    console.error("Error fetching AdMob all-time earnings:", error);
+    console.error("Error fetching AdMob all-time earnings in platform analytics:", error);
     // Fall back to database earnings if API call fails
+    admobAllTimeEarnings = 0;
   }
 
   // Revenue calculations from earnings table (primary source)
@@ -145,33 +124,13 @@ export async function getPlatformAnalytics() {
   const totalRevenue = totalAdMobRevenue + otherEarnings;
   
   // This month's revenue (current month)
+  // Use database earnings for current month (more reliable and faster)
+  // The earnings page uses the same approach for last 30 days
   const currentMonthStart = startOfMonth(now);
   
-  // Get this month's AdMob earnings from API if available
-  let admobThisMonthEarnings = 0;
-  try {
-    const clientId = process.env.ADMOB_API_CLIENT_ID;
-    const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
-    const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
-    const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
-
-    if (clientId && clientSecret && refreshToken && publisherId) {
-      const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
-      const admobReportData = await fetchAdMobEarnings(
-        publisherId,
-        accessToken,
-        currentMonthStart,
-        now,
-        AJIRA_APP_ID // Filter by specific app ID
-      );
-      admobThisMonthEarnings = admobReportData.reduce((sum, row) => sum + row.earnings, 0);
-    }
-  } catch (error) {
-    console.error("Error fetching AdMob this month earnings:", error);
-  }
-
   // This month's earnings from database (AdMob)
-  const admobThisMonthFromDB = earnings
+  // Use database for current month (consistent with earnings page approach)
+  const admobThisMonth = earnings
     .filter(earning => {
       if (earning.revenue_source !== "admob" || !earning.earned_at) return false;
       const earnedDate = new Date(earning.earned_at);
@@ -181,9 +140,6 @@ export async function getPlatformAnalytics() {
       const amount = parseFloat(earning.amount as any) || 0;
       return sum + amount;
     }, 0);
-
-  // Use API data if available, otherwise use database
-  const admobThisMonth = admobThisMonthEarnings > 0 ? admobThisMonthEarnings : admobThisMonthFromDB;
 
   // Other earnings this month
   const otherEarningsThisMonth = earnings
