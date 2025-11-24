@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { auth } from "@/lib/firebase-client";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Lock, Mail, ArrowRight, Users } from "lucide-react";
 import Link from "next/link";
-
-// Force dynamic rendering to avoid build-time errors
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,19 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  
-  // Lazy initialization of Supabase client to avoid build-time errors
-  const getSupabaseClient = () => {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-    try {
-      return createClient();
-    } catch (err) {
-      console.error('Failed to create Supabase client:', err);
-      return null;
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,24 +20,31 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        throw new Error("Supabase client not available. Please check your environment configuration.");
+      if (!auth) {
+        throw new Error("Firebase authentication is not configured. Please check your environment variables.");
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
+      await signInWithEmailAndPassword(auth, email, password);
 
       router.push("/admin/dashboard");
       router.refresh();
     } catch (err: any) {
-      setError(err.message || "Failed to sign in");
+      console.error("Login error:", err);
+      let errorMessage = "Failed to sign in";
+      
+      if (err.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email";
+      } else if (err.code === "auth/wrong-password") {
+        errorMessage = "Incorrect password";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address";
+      } else if (err.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

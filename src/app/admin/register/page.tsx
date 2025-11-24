@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, ArrowRight, Users } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { auth } from "@/lib/firebase-client";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { registerAdminInDatabase } from "@/app/actions/admin-register";
 import Link from "next/link";
 
@@ -78,19 +79,6 @@ export default function RegisterPage() {
     return basePermissions;
   };
 
-  // Lazy initialization of Supabase client to avoid build-time errors
-  const getSupabaseClient = () => {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-    try {
-      return createClient();
-    } catch (err) {
-      console.error('Failed to create Supabase client:', err);
-      return null;
-    }
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -103,48 +91,24 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        throw new Error("Supabase client not available. Please check your environment configuration.");
+      if (!auth) {
+        throw new Error("Firebase authentication is not configured. Please check your environment variables.");
       }
 
-      // 1. Create user in Supabase Auth
-      // Add timeout wrapper for self-hosted Supabase
-      const signUpPromise = supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            role: formData.role,
-          },
-        },
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      const user = userCredential.user;
+
+      await updateProfile(user, {
+        displayName: formData.fullName,
       });
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout: Supabase server did not respond within 30 seconds')), 30000);
-      });
-
-      const { data: authData, error: authError } = await Promise.race([
-        signUpPromise,
-        timeoutPromise,
-      ]) as any;
-
-      if (authError) {
-        // Handle specific timeout errors
-        if (authError.message?.includes('timeout') || authError.message?.includes('aborted')) {
-          throw new Error('Connection timeout: Unable to reach Supabase server. Please check if your self-hosted Supabase instance is running and accessible.');
-        }
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error("Failed to create user account");
-      }
-
-      // 2. Register admin in Supabase database
       const result = await registerAdminInDatabase({
-        uid: authData.user.id,
+        uid: user.uid,
         email: formData.email,
         fullName: formData.fullName,
         role: formData.role,
@@ -152,8 +116,6 @@ export default function RegisterPage() {
       });
 
       if (!result.success) {
-        // If database registration fails, we should delete the auth user
-        // But Supabase doesn't allow deleting users from client, so we'll just show the error
         throw new Error(result.error || "Failed to register admin in database");
       }
 
@@ -166,17 +128,12 @@ export default function RegisterPage() {
       console.error("Registration error:", err);
       let errorMessage = "Failed to register admin user";
       
-      // Handle timeout and connection errors
-      if (err.message?.includes("timeout") || err.message?.includes("aborted") || err.message?.includes("504") || err.message?.includes("Gateway Timeout")) {
-        errorMessage = "Connection timeout: Unable to reach Supabase server. Please check:\n1. Your self-hosted Supabase instance is running\n2. The endpoint https://get.dreamjobs1.com is accessible\n3. There are no firewall or network issues";
-      } else if (err.message?.includes("already registered") || err.message?.includes("already exists") || err.message?.includes("User already registered")) {
+      if (err.code === "auth/email-already-in-use") {
         errorMessage = "This email is already registered";
-      } else if (err.message?.includes("Invalid email") || err.message?.includes("invalid email")) {
+      } else if (err.code === "auth/invalid-email") {
         errorMessage = "Invalid email address";
-      } else if (err.message?.includes("Password") || err.message?.includes("password")) {
-        errorMessage = "Password is too weak. Please use at least 6 characters";
-      } else if (err.message?.includes("Network") || err.message?.includes("network") || err.message?.includes("Failed to fetch")) {
-        errorMessage = "Network error: Unable to connect to Supabase server. Please check your connection and server status.";
+      } else if (err.code === "auth/weak-password") {
+        errorMessage = "Password is too weak";
       } else if (err.message) {
         errorMessage = err.message;
       }
