@@ -21,7 +21,7 @@ import {
   SelectItem,
 } from "@tremor/react";
 import { Search, Plus, Pencil, Trash2, AlertTriangle, Map, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Region {
@@ -37,24 +37,48 @@ interface District {
   region_id: number;
 }
 
+interface Country {
+  code: string;
+  name: string;
+  hasDistricts: boolean;
+}
+
 export default function LocationsTable({ 
   regions, 
   districts,
   searchParams,
   totalCount,
   currentPage,
-  itemsPerPage
+  itemsPerPage,
+  countries,
+  selectedCountry,
+  hasDistricts
 }: { 
   regions: Region[];
   districts: District[];
-  searchParams: { q?: string; page?: string; tab?: string };
+  searchParams: { q?: string; page?: string; tab?: string; country?: string };
   totalCount: number;
   currentPage: number;
   itemsPerPage: number;
+  countries: readonly Country[];
+  selectedCountry: string;
+  hasDistricts: boolean;
 }) {
   const router = useRouter();
-  const initialTab = searchParams.tab === 'districts' ? 1 : 0;
+  // Only allow districts tab if country has districts
+  const initialTab = (searchParams.tab === 'districts' && hasDistricts) ? 1 : 0;
   const [activeTab, setActiveTab] = useState(initialTab); // 0 = Regions, 1 = Districts
+  
+  // Reset to regions tab if switching to country without districts
+  useEffect(() => {
+    if (!hasDistricts && activeTab === 1) {
+      setActiveTab(0);
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", "regions");
+      if (selectedCountry) params.set("country", selectedCountry);
+      router.replace(`${window.location.pathname}?${params.toString()}`);
+    }
+  }, [hasDistricts, selectedCountry, router, activeTab]);
   
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -69,6 +93,20 @@ export default function LocationsTable({
     params.set("tab", index === 0 ? "regions" : "districts");
     params.set("page", "1"); // Reset pagination on tab switch
     params.delete("q"); // Clear search on tab switch
+    if (selectedCountry) params.set("country", selectedCountry);
+    router.replace(`${window.location.pathname}?${params.toString()}`);
+  };
+
+  const handleCountryChange = (countryCode: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("country", countryCode);
+    params.set("page", "1"); // Reset pagination on country change
+    params.delete("q"); // Clear search on country change
+    // Reset to regions tab if switching to country without districts
+    const newCountry = countries.find(c => c.code === countryCode);
+    if (!newCountry?.hasDistricts) {
+      params.set("tab", "regions");
+    }
     router.replace(`${window.location.pathname}?${params.toString()}`);
   };
 
@@ -81,6 +119,7 @@ export default function LocationsTable({
     }
     params.set("page", "1");
     if (activeTab === 1) params.set("tab", "districts");
+    if (selectedCountry) params.set("country", selectedCountry);
     router.replace(`${window.location.pathname}?${params.toString()}`);
   };
 
@@ -88,6 +127,7 @@ export default function LocationsTable({
     const params = new URLSearchParams(window.location.search);
     params.set("page", newPage.toString());
     if (activeTab === 1) params.set("tab", "districts");
+    if (selectedCountry) params.set("country", selectedCountry);
     router.replace(`${window.location.pathname}?${params.toString()}`);
   };
 
@@ -109,6 +149,7 @@ export default function LocationsTable({
       const payload = {
         ...formData,
         type,
+        country: selectedCountry,
         region_id: activeTab === 1 ? parseInt(formData.region_id) : undefined
       };
 
@@ -139,7 +180,7 @@ export default function LocationsTable({
     setLoading(true);
     try {
       const type = activeTab === 0 ? "region" : "district";
-      const res = await fetch(`/api/admin/content/locations/${selectedItem.id}?type=${type}`, {
+      const res = await fetch(`/api/admin/content/locations/${selectedItem.id}?type=${type}&country=${selectedCountry}`, {
         method: "DELETE",
       });
 
@@ -180,12 +221,14 @@ export default function LocationsTable({
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
+  const selectedCountryName = countries.find(c => c.code === selectedCountry)?.name || selectedCountry;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <Title>Locations Management</Title>
-          <Text>Manage regions and districts for Tanzania ({totalCount} records)</Text>
+          <Text>Manage regions{hasDistricts ? ' and districts' : ''} for {selectedCountryName} ({totalCount} records)</Text>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
            <Button icon={Plus} onClick={() => openEdit()}>
@@ -194,10 +237,29 @@ export default function LocationsTable({
         </div>
       </div>
 
-      <TabGroup index={activeTab} onIndexChange={handleTabChange}>
+      {/* Country Selector */}
+      <div className="mb-4">
+        <label className="text-sm text-gray-500 mb-2 block">Select Country</label>
+        <Select 
+          value={selectedCountry} 
+          onValueChange={handleCountryChange}
+        >
+          {countries.map(country => (
+            <SelectItem key={country.code} value={country.code}>
+              {country.name}
+            </SelectItem>
+          ))}
+        </Select>
+      </div>
+
+      <TabGroup index={activeTab} onIndexChange={(index) => {
+        // Prevent switching to districts tab if country doesn't have districts
+        if (index === 1 && !hasDistricts) return;
+        handleTabChange(index);
+      }}>
         <TabList className="mb-4">
           <Tab icon={Map}>Regions</Tab>
-          <Tab icon={MapPin}>Districts</Tab>
+          <Tab icon={MapPin} disabled={!hasDistricts}>Districts</Tab>
         </TabList>
         
         <div className="mb-4">

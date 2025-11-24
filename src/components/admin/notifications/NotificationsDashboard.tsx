@@ -205,7 +205,22 @@ export default function NotificationsDashboard({ history }: { history: Notificat
               </Card>
 
               {/* History Table */}
-              <NotificationsTable data={history} />
+              <NotificationsTable 
+                notifications={history.map(item => ({
+                  id: item.id,
+                  title: item.title,
+                  message: item.message,
+                  recipient_type: item.recipient_type,
+                  recipient_uids: [], // Not available in history
+                  sent_at: item.sent_at,
+                  sent_by: "System", // Default value
+                  delivery_count: item.delivery_count,
+                  read_count: item.read_count,
+                }))}
+                currentPage={1}
+                totalPages={1}
+                searchQuery=""
+              />
             </div>
           </TabPanel>
         </TabPanels>

@@ -1,10 +1,20 @@
 import { createClient } from "@/utils/supabase/server";
 import LocationsTable from "@/components/admin/content/LocationsTable";
 
+// Country configuration
+const COUNTRIES = [
+  { code: 'kenya', name: 'Kenya', hasDistricts: false },
+  { code: 'uganda', name: 'Uganda', hasDistricts: false },
+  { code: 'rwanda', name: 'Rwanda', hasDistricts: false },
+  { code: 'tanzania', name: 'Tanzania', hasDistricts: true },
+] as const;
+
+type CountryCode = typeof COUNTRIES[number]['code'];
+
 export default async function LocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string; country?: string }>;
 }) {
   const supabase = await createClient();
   const params = await searchParams;
@@ -14,11 +24,17 @@ export default async function LocationsPage({
   const from = (page - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
   const activeTab = params.tab === 'districts' ? 'districts' : 'regions';
+  
+  // Get selected country or default to Tanzania
+  const selectedCountry = (params.country as CountryCode) || 'tanzania';
+  const countryConfig = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[3]; // Default to Tanzania
+  
+  const regionsTable = `${selectedCountry}_regions`;
+  const districtsTable = selectedCountry === 'tanzania' ? 'tanzania_districts' : null;
 
-  // We fetch ALL regions for the dropdown regardless of pagination
-  // But we paginate the main view for regions if active tab is regions
+  // Fetch ALL regions for the dropdown regardless of pagination
   const { data: allRegions } = await supabase
-    .from("tanzania_regions")
+    .from(regionsTable)
     .select("id, name, code")
     .order("name");
 
@@ -28,7 +44,7 @@ export default async function LocationsPage({
 
   if (activeTab === 'regions') {
     let dbQuery = supabase
-      .from("tanzania_regions")
+      .from(regionsTable)
       .select("*", { count: "exact" });
 
     if (query) {
@@ -42,9 +58,10 @@ export default async function LocationsPage({
     const { data, count: totalCount } = await dbQuery;
     regions = data || [];
     count = totalCount || 0;
-  } else {
+  } else if (activeTab === 'districts' && districtsTable) {
+    // Only show districts for Tanzania
     let dbQuery = supabase
-      .from("tanzania_districts")
+      .from(districtsTable)
       .select("*", { count: "exact" });
 
     if (query) {
@@ -69,6 +86,9 @@ export default async function LocationsPage({
         totalCount={count}
         currentPage={page}
         itemsPerPage={itemsPerPage}
+        countries={COUNTRIES}
+        selectedCountry={selectedCountry}
+        hasDistricts={countryConfig.hasDistricts}
       />
     </div>
   );

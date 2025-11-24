@@ -1,6 +1,25 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
+// Helper function to get table name based on country and type
+function getTableName(country: string, type: string): string | null {
+  const validCountries = ['kenya', 'uganda', 'rwanda', 'tanzania'];
+  if (!validCountries.includes(country.toLowerCase())) {
+    return null;
+  }
+
+  if (type === "region") {
+    return `${country.toLowerCase()}_regions`;
+  } else if (type === "district") {
+    // Only Tanzania has districts
+    if (country.toLowerCase() === 'tanzania') {
+      return 'tanzania_districts';
+    }
+    return null;
+  }
+  return null;
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -8,23 +27,22 @@ export async function PUT(
   const supabase = await createClient();
   const { id } = await params;
   const body = await request.json();
-  const { name, code, type, region_id } = body;
+  const { name, code, type, region_id, country = 'tanzania' } = body;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let table = "";
+  const table = getTableName(country, type);
+  if (!table) {
+    return NextResponse.json({ error: "Invalid country or type combination" }, { status: 400 });
+  }
+
   let payload: any = { name, code };
 
-  if (type === "region") {
-    table = "tanzania_regions";
-  } else if (type === "district") {
-    table = "tanzania_districts";
+  if (type === "district") {
     if (region_id) payload.region_id = region_id;
-  } else {
-    return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   }
 
   const { error } = await supabase
@@ -47,6 +65,7 @@ export async function DELETE(
   const { id } = await params;
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
+  const country = url.searchParams.get("country") || 'tanzania';
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -57,10 +76,13 @@ export async function DELETE(
     return NextResponse.json({ error: "Type required" }, { status: 400 });
   }
 
-  let table = "";
-  if (type === "region") {
-    table = "tanzania_regions";
-    // Check constraints: districts linked to region
+  const table = getTableName(country, type);
+  if (!table) {
+    return NextResponse.json({ error: "Invalid country or type combination" }, { status: 400 });
+  }
+
+  // Check constraints: districts linked to region (only for Tanzania)
+  if (type === "region" && country.toLowerCase() === 'tanzania') {
     const { count } = await supabase
       .from("tanzania_districts")
       .select("*", { count: "exact", head: true })
@@ -69,8 +91,6 @@ export async function DELETE(
     if ((count || 0) > 0) {
        return NextResponse.json({ error: "Cannot delete region with associated districts" }, { status: 400 });
     }
-  } else if (type === "district") {
-    table = "tanzania_districts";
   }
 
   const { error } = await supabase
@@ -84,4 +104,3 @@ export async function DELETE(
 
   return NextResponse.json({ success: true });
 }
-

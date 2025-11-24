@@ -94,10 +94,10 @@ export default function SeekersTable({
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  const formatDate = (dateString: string | null, formatStr: string = "PPP") => {
+  const formatDate = (dateString: string | null | undefined, formatStr: string = "PPP") => {
     if (!dateString) return "N/A";
     try {
-        const date = new Date(dateString);
+        const date = new Date(dateString || '');
         if(isNaN(date.getTime())) return "N/A";
         return format(date, formatStr);
     } catch {

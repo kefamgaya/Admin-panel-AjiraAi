@@ -176,7 +176,7 @@ export function SendNotificationForm() {
             <SelectItem value="companies">
               Companies Only
             </SelectItem>
-            <SelectItem value="specific" disabled>
+            <SelectItem value="specific">
               Specific Users (Coming Soon)
             </SelectItem>
           </Select>
