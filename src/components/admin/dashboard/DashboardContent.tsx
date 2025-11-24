@@ -39,6 +39,7 @@ type DashboardData = {
     total7d: number;
     bySource: Record<string, number>;
     today: number;
+    allTimeAdMob: number;
   };
   pending: {
     jobs: number;
@@ -239,6 +240,18 @@ export default function DashboardContent({ data }: { data: DashboardData }) {
                   </ListItem>
                 ))}
               </List>
+              {/* All-Time AdMob Earnings */}
+              {data.earnings.allTimeAdMob > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <Flex justifyContent="between" alignItems="center">
+                    <div>
+                      <Text className="text-sm text-gray-500">All-Time AdMob Earnings</Text>
+                      <Metric className="text-lg text-emerald-600">{valueFormatter(data.earnings.allTimeAdMob)}</Metric>
+                    </div>
+                    <DollarSign className="w-8 h-8 text-emerald-500" />
+                  </Flex>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex items-center justify-center h-48">

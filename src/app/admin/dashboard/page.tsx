@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import DashboardContent from "@/components/admin/dashboard/DashboardContent";
 import { subDays, startOfDay, endOfDay, format } from "date-fns";
+import { getAllTimeAdMobEarnings } from "@/app/actions/earnings-analytics";
 
 // Helper function to fetch all data with pagination
 async function fetchAllData(queryBuilder: any) {
@@ -170,8 +171,24 @@ export default async function DashboardPage() {
       .limit(10),
   ]);
 
+  // Fetch real AdMob all-time earnings from API
+  const admobAllTimeFromAPI = await getAllTimeAdMobEarnings();
+  
   // Calculate revenue from earnings table
-  const currentRevenue = earningsResult.data?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
+  // Separate AdMob earnings from other earnings
+  const admobEarningsFromDB = earningsResult.data
+    ?.filter(item => item.revenue_source === "admob")
+    .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
+  
+  const otherEarnings30d = earningsResult.data
+    ?.filter(item => item.revenue_source !== "admob")
+    .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
+  
+  // Use API data for AdMob if available, otherwise use database
+  // For 30-day revenue, we use database data since API gives all-time
+  const admobRevenue30d = admobEarningsFromDB; // Use DB for 30-day period
+  const currentRevenue = admobRevenue30d + otherEarnings30d;
+  
   const prevRevenue = prevEarningsResult.data?.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0) || 0;
   const revenueGrowth = prevRevenue === 0 ? (currentRevenue > 0 ? 100 : 0) : ((currentRevenue - prevRevenue) / prevRevenue) * 100;
 
@@ -185,6 +202,9 @@ export default async function DashboardPage() {
     acc[source] = (acc[source] || 0) + parseFloat(item.amount || 0);
     return acc;
   }, {} as Record<string, number>);
+  
+  // Add all-time AdMob earnings to the data
+  const allTimeAdMobEarnings = admobAllTimeFromAPI > 0 ? admobAllTimeFromAPI : admobEarningsFromDB;
 
   // Chart Data for last 30 days (from earnings table)
   const chartMap = new Map<string, number>();
@@ -250,6 +270,7 @@ export default async function DashboardPage() {
       total7d: totalEarnings7d,
       bySource: earningsBySource,
       today: todayEarnings,
+      allTimeAdMob: allTimeAdMobEarnings, // Real all-time AdMob earnings from API
     },
     
     // Pending actions

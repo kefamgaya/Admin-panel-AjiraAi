@@ -46,7 +46,8 @@ export async function fetchAdMobEarnings(
   publisherId: string,
   accessToken: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  appId?: string
 ): Promise<AdMobReportData[]> {
   const formattedStartDate = {
     year: startDate.getFullYear(),
@@ -75,8 +76,18 @@ export async function fetchAdMobEarnings(
             startDate: formattedStartDate,
             endDate: formattedEndDate,
           },
-          dimensions: ["DATE"],
+          dimensions: appId ? ["DATE", "APPLICATION"] : ["DATE"],
           metrics: ["IMPRESSIONS", "CLICKS", "ESTIMATED_EARNINGS"],
+          ...(appId && {
+            dimensionFilters: [
+              {
+                dimension: "APPLICATION",
+                matchesAny: {
+                  values: [appId],
+                },
+              },
+            ],
+          }),
           localizationSettings: {
             currencyCode: "USD",
             languageCode: "en-US",

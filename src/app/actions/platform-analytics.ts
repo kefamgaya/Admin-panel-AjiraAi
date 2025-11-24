@@ -4,6 +4,9 @@ import { createClient } from "@/utils/supabase/server";
 import { differenceInDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { getAccessToken, fetchAdMobEarnings } from "@/lib/admob";
 
+// Specific app ID for Ajira AI
+const AJIRA_APP_ID = "ca-app-pub-1644643871385985~1470724022";
+
 function toTitleCase(str: string) {
   return str.replace(
     /\w\S*/g,
@@ -106,7 +109,8 @@ export async function getPlatformAnalytics() {
         publisherId,
         accessToken,
         allTimeStartDate,
-        allTimeEndDate
+        allTimeEndDate,
+        AJIRA_APP_ID // Filter by specific app ID
       );
 
       // Sum all AdMob earnings from the report
@@ -157,7 +161,8 @@ export async function getPlatformAnalytics() {
         publisherId,
         accessToken,
         currentMonthStart,
-        now
+        now,
+        AJIRA_APP_ID // Filter by specific app ID
       );
       admobThisMonthEarnings = admobReportData.reduce((sum, row) => sum + row.earnings, 0);
     }

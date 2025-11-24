@@ -5,6 +5,46 @@ import { subMonths, format, startOfMonth, getUnixTime } from "date-fns";
 import { getAccessToken, fetchAdMobEarnings } from "@/lib/admob";
 import { revalidatePath } from "next/cache";
 
+// Specific app ID for Ajira AI
+const AJIRA_APP_ID = "ca-app-pub-1644643871385985~1470724022";
+
+// Shared function to fetch all-time AdMob earnings from API for specific app
+export async function getAllTimeAdMobEarnings(): Promise<number> {
+  try {
+    const clientId = process.env.ADMOB_API_CLIENT_ID;
+    const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
+    const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
+    const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
+
+    if (!clientId || !clientSecret || !refreshToken || !publisherId) {
+      console.warn("AdMob credentials not configured, falling back to database");
+      return 0;
+    }
+
+    // Fetch all-time AdMob earnings for specific app (from app launch date, using a very early date)
+    const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
+    // AdMob typically has data from when the app was first published
+    // Use a date 5 years ago as start date to ensure we get all historical data
+    const allTimeStartDate = new Date();
+    allTimeStartDate.setFullYear(allTimeStartDate.getFullYear() - 5);
+    const allTimeEndDate = new Date();
+
+    const admobReportData = await fetchAdMobEarnings(
+      publisherId,
+      accessToken,
+      allTimeStartDate,
+      allTimeEndDate,
+      AJIRA_APP_ID // Filter by specific app ID
+    );
+
+    // Sum all AdMob earnings from the report
+    return admobReportData.reduce((sum, row) => sum + row.earnings, 0);
+  } catch (error) {
+    console.error("Error fetching AdMob all-time earnings:", error);
+    return 0; // Return 0 on error, will fall back to database
+  }
+}
+
 // Helper function to fetch all data with pagination
 async function fetchAllData(queryBuilder: any) {
   let allData: any[] = [];
@@ -53,7 +93,10 @@ export async function syncAdMobData(daysToSync: number = 30) {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - daysToSync); // Use dynamic duration
 
-    const reportData = await fetchAdMobEarnings(publisherId, accessToken, startDate, endDate);
+    // Use the specific app ID: ca-app-pub-1644643871385985~1470724022
+    const appId = AJIRA_APP_ID;
+    
+    const reportData = await fetchAdMobEarnings(publisherId, accessToken, startDate, endDate, appId);
 
     let processedCount = 0;
     for (const row of reportData) {
@@ -170,8 +213,26 @@ export async function getEarningsAnalytics() {
         };
     }
 
+    // Fetch real AdMob all-time earnings from API
+    const admobAllTimeFromAPI = await getAllTimeAdMobEarnings();
+    
     // Calculate totals
-    const totalEarnings = allEarnings.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    // Separate AdMob earnings from other earnings
+    const admobEarningsFromDB = allEarnings
+      .filter(e => e.revenue_source === "admob")
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    
+    // Use API data if available, otherwise use database
+    const totalAdMobAllTime = admobAllTimeFromAPI > 0 ? admobAllTimeFromAPI : admobEarningsFromDB;
+    
+    // Other earnings (non-AdMob)
+    const otherEarnings = allEarnings
+      .filter(e => e.revenue_source !== "admob")
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    
+    // Total earnings = AdMob (from API) + other earnings
+    const totalEarnings = totalAdMobAllTime + otherEarnings;
+    
     const earningsLast30Days = allEarnings
       .filter(e => new Date(e.earned_at) >= thirtyDaysAgo)
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
@@ -189,8 +250,9 @@ export async function getEarningsAnalytics() {
     }));
 
     // AdMob specific metrics
+    // Use API data for all-time, database for last 30 days
     const admobEarnings = allEarnings.filter(e => e.revenue_source === "admob");
-    const totalAdMobRevenue = admobEarnings.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    const totalAdMobRevenue = totalAdMobAllTime; // Use API data for all-time
     const admobLast30Days = admobEarnings
       .filter(e => new Date(e.earned_at) >= thirtyDaysAgo)
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
