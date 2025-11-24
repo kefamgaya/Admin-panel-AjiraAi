@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { differenceInDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { getAccessToken, fetchAdMobEarnings } from "@/lib/admob";
 
 function toTitleCase(str: string) {
   return str.replace(
@@ -56,7 +57,8 @@ export async function getPlatformAnalytics() {
     credits,
     referrals,
     subscriptions,
-    resumes
+    resumes,
+    earnings
   ] = await Promise.all([
     fetchAllData(supabase, "all_users", "uid, role, registration_date, is_blocked, accounttype, location, skills"),
     fetchAllData(supabase, "companies", "uid, created_at, is_verified, is_blocked, subscription_plan, jobs_posted, industry, location"),
@@ -66,7 +68,8 @@ export async function getPlatformAnalytics() {
     fetchAllData(supabase, "credit_transactions", "id, amount, transaction_type, created_at"),
     fetchAllData(supabase, "referrals", "id, created_at, status, referrer_credits_awarded, referee_credits_awarded"),
     fetchAllData(supabase, "subscription_history", "id, created_at, amount, status, plan"),
-    fetchAllData(supabase, "generated_resumes", "id, user_uid, resume_type, template, created_at")
+    fetchAllData(supabase, "generated_resumes", "id, user_uid, resume_type, template, created_at"),
+    fetchAllData(supabase, "earnings", "id, amount, currency, revenue_source, earned_at, created_at")
   ]);
 
   // Calculate growth metrics (last 30 days vs previous 30 days)
@@ -82,11 +85,114 @@ export async function getPlatformAnalytics() {
   const newJobsPrevious30 = jobs.filter(j => j.Time && new Date(j.Time) >= previous30Days && new Date(j.Time) < last30Days).length;
   const jobGrowthRate = newJobsPrevious30 > 0 ? ((newJobsLast30 - newJobsPrevious30) / newJobsPrevious30) * 100 : 0;
 
-  // Revenue calculations
-  const totalRevenue = subscriptions.reduce((sum, sub) => sum + (parseFloat(sub.amount as any) || 0), 0);
-  const revenueLastMonth = subscriptions
-    .filter(sub => sub.created_at && new Date(sub.created_at) >= subMonths(now, 1))
-    .reduce((sum, sub) => sum + (parseFloat(sub.amount as any) || 0), 0);
+  // Fetch real AdMob all-time earnings from API
+  let admobAllTimeEarnings = 0;
+  try {
+    const clientId = process.env.ADMOB_API_CLIENT_ID;
+    const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
+    const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
+    const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
+
+    if (clientId && clientSecret && refreshToken && publisherId) {
+      // Fetch all-time AdMob earnings (from app launch date, using a very early date)
+      const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
+      // AdMob typically has data from when the app was first published
+      // Use a date 5 years ago as start date to ensure we get all historical data
+      const allTimeStartDate = new Date();
+      allTimeStartDate.setFullYear(allTimeStartDate.getFullYear() - 5);
+      const allTimeEndDate = new Date();
+
+      const admobReportData = await fetchAdMobEarnings(
+        publisherId,
+        accessToken,
+        allTimeStartDate,
+        allTimeEndDate
+      );
+
+      // Sum all AdMob earnings from the report
+      admobAllTimeEarnings = admobReportData.reduce((sum, row) => sum + row.earnings, 0);
+    }
+  } catch (error) {
+    console.error("Error fetching AdMob all-time earnings:", error);
+    // Fall back to database earnings if API call fails
+  }
+
+  // Revenue calculations from earnings table (primary source)
+  // Separate AdMob earnings from other earnings
+  const admobEarningsFromDB = earnings
+    .filter(e => e.revenue_source === "admob")
+    .reduce((sum, earning) => {
+      const amount = parseFloat(earning.amount as any) || 0;
+      return sum + amount;
+    }, 0);
+
+  // Use real AdMob API data if available, otherwise use database
+  const totalAdMobRevenue = admobAllTimeEarnings > 0 ? admobAllTimeEarnings : admobEarningsFromDB;
+
+  // Other earnings (non-AdMob)
+  const otherEarnings = earnings
+    .filter(e => e.revenue_source !== "admob")
+    .reduce((sum, earning) => {
+      const amount = parseFloat(earning.amount as any) || 0;
+      return sum + amount;
+    }, 0);
+
+  // Total revenue = AdMob + other earnings
+  const totalRevenue = totalAdMobRevenue + otherEarnings;
+  
+  // This month's revenue (current month)
+  const currentMonthStart = startOfMonth(now);
+  
+  // Get this month's AdMob earnings from API if available
+  let admobThisMonthEarnings = 0;
+  try {
+    const clientId = process.env.ADMOB_API_CLIENT_ID;
+    const clientSecret = process.env.ADMOB_API_CLIENT_SECRET;
+    const refreshToken = process.env.ADMOB_API_REFRESH_TOKEN;
+    const publisherId = process.env.ADMOB_PUBLISHER_ID?.replace("pub-", "");
+
+    if (clientId && clientSecret && refreshToken && publisherId) {
+      const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
+      const admobReportData = await fetchAdMobEarnings(
+        publisherId,
+        accessToken,
+        currentMonthStart,
+        now
+      );
+      admobThisMonthEarnings = admobReportData.reduce((sum, row) => sum + row.earnings, 0);
+    }
+  } catch (error) {
+    console.error("Error fetching AdMob this month earnings:", error);
+  }
+
+  // This month's earnings from database (AdMob)
+  const admobThisMonthFromDB = earnings
+    .filter(earning => {
+      if (earning.revenue_source !== "admob" || !earning.earned_at) return false;
+      const earnedDate = new Date(earning.earned_at);
+      return earnedDate >= currentMonthStart;
+    })
+    .reduce((sum, earning) => {
+      const amount = parseFloat(earning.amount as any) || 0;
+      return sum + amount;
+    }, 0);
+
+  // Use API data if available, otherwise use database
+  const admobThisMonth = admobThisMonthEarnings > 0 ? admobThisMonthEarnings : admobThisMonthFromDB;
+
+  // Other earnings this month
+  const otherEarningsThisMonth = earnings
+    .filter(earning => {
+      if (earning.revenue_source === "admob" || !earning.earned_at) return false;
+      const earnedDate = new Date(earning.earned_at);
+      return earnedDate >= currentMonthStart;
+    })
+    .reduce((sum, earning) => {
+      const amount = parseFloat(earning.amount as any) || 0;
+      return sum + amount;
+    }, 0);
+
+  const revenueLastMonth = admobThisMonth + otherEarningsThisMonth;
 
   // User analytics
   const activeUsers = users.filter(u => !u.is_blocked).length;
@@ -155,6 +261,8 @@ export async function getPlatformAnalytics() {
 
   // Growth over time (last 6 months)
   const monthlyGrowth = [];
+  const monthlyRevenue: number[] = [];
+  
   for (let i = 5; i >= 0; i--) {
     const monthStart = startOfMonth(subMonths(now, i));
     const monthEnd = endOfMonth(subMonths(now, i));
@@ -178,6 +286,20 @@ export async function getPlatformAnalytics() {
       return date >= monthStart && date <= monthEnd;
     }).length;
 
+    // Calculate revenue for this month
+    const revenueInMonth = earnings
+      .filter(earning => {
+        if (!earning.earned_at) return false;
+        const earnedDate = new Date(earning.earned_at);
+        return earnedDate >= monthStart && earnedDate <= monthEnd;
+      })
+      .reduce((sum, earning) => {
+        const amount = parseFloat(earning.amount as any) || 0;
+        return sum + amount;
+      }, 0);
+    
+    monthlyRevenue.push(revenueInMonth);
+
     monthlyGrowth.push({
       month: monthLabel,
       users: usersInMonth,
@@ -185,6 +307,11 @@ export async function getPlatformAnalytics() {
       applications: applicationsInMonth
     });
   }
+  
+  // Calculate average monthly revenue from last 6 months
+  const avgMonthlyRevenue = monthlyRevenue.length > 0
+    ? monthlyRevenue.reduce((sum, rev) => sum + rev, 0) / monthlyRevenue.length
+    : 0;
 
   // Top locations
   const userLocations = users.reduce((acc, user) => {
@@ -284,6 +411,7 @@ export async function getPlatformAnalytics() {
     finance: {
       totalRevenue,
       revenueLastMonth,
+      avgMonthlyRevenue,
       totalCreditsIssued,
       totalCreditsUsed,
       netCredits: totalCreditsIssued - totalCreditsUsed,

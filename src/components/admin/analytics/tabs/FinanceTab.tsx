@@ -13,6 +13,21 @@ import { DollarSign, TrendingUp, TrendingDown, Users, Gift, CreditCard } from "l
 
 export function FinanceTab({ data }: { data: any }) {
   const { finance } = data;
+  
+  // Calculate safe percentages and averages
+  const revenuePercentage = finance.totalRevenue > 0 
+    ? (finance.revenueLastMonth / finance.totalRevenue) * 100 
+    : 0;
+  
+  const utilizationRate = finance.totalCreditsIssued > 0
+    ? (finance.totalCreditsUsed / finance.totalCreditsIssued) * 100
+    : 0;
+  
+  const referralSuccessRate = finance.totalReferrals > 0
+    ? (finance.successfulReferrals / finance.totalReferrals) * 100
+    : 0;
+  
+  const avgMonthlyRevenue = finance.avgMonthlyRevenue || (finance.totalRevenue / 6);
 
   return (
     <div className="space-y-6 mt-6">
@@ -84,12 +99,12 @@ export function FinanceTab({ data }: { data: any }) {
             </div>
             <Metric className="text-3xl text-blue-600">${finance.revenueLastMonth.toLocaleString()}</Metric>
             <ProgressBar 
-              value={(finance.revenueLastMonth / finance.totalRevenue) * 100} 
+              value={revenuePercentage} 
               color="blue" 
               className="mt-3" 
             />
             <Text className="text-xs text-gray-500 mt-1">
-              {((finance.revenueLastMonth / finance.totalRevenue) * 100).toFixed(1)}% of total
+              {revenuePercentage.toFixed(1)}% of total
             </Text>
           </div>
 
@@ -99,7 +114,7 @@ export function FinanceTab({ data }: { data: any }) {
               <Text className="font-medium">Avg per Month</Text>
             </div>
             <Metric className="text-3xl text-purple-600">
-              ${(finance.totalRevenue / 6).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              ${avgMonthlyRevenue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </Metric>
             <Text className="text-xs text-gray-500 mt-3">
               Based on last 6 months
@@ -128,12 +143,12 @@ export function FinanceTab({ data }: { data: any }) {
                 <Badge color="rose" size="lg">{finance.totalCreditsUsed.toLocaleString()}</Badge>
               </div>
               <ProgressBar 
-                value={(finance.totalCreditsUsed / finance.totalCreditsIssued) * 100} 
+                value={utilizationRate} 
                 color="rose" 
                 className="h-3" 
               />
               <Text className="text-xs text-gray-500 mt-1">
-                {((finance.totalCreditsUsed / finance.totalCreditsIssued) * 100).toFixed(1)}% utilization
+                {utilizationRate.toFixed(1)}% utilization
               </Text>
             </div>
 
@@ -174,7 +189,7 @@ export function FinanceTab({ data }: { data: any }) {
                 <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-800">
                   <Text className="text-xs text-gray-500">Utilization Rate</Text>
                   <Text className="font-semibold">
-                    {((finance.totalCreditsUsed / finance.totalCreditsIssued) * 100).toFixed(1)}%
+                    {utilizationRate.toFixed(1)}%
                   </Text>
                 </div>
               </div>
@@ -203,12 +218,12 @@ export function FinanceTab({ data }: { data: any }) {
             </div>
             <Metric className="text-2xl text-emerald-600">{finance.successfulReferrals}</Metric>
             <ProgressBar 
-              value={(finance.successfulReferrals / finance.totalReferrals) * 100} 
+              value={referralSuccessRate} 
               color="emerald" 
               className="mt-2" 
             />
             <Text className="text-xs text-gray-500 mt-1">
-              {((finance.successfulReferrals / finance.totalReferrals) * 100).toFixed(1)}% success rate
+              {referralSuccessRate.toFixed(1)}% success rate
             </Text>
           </div>
 
