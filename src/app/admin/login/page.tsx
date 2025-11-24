@@ -9,7 +9,9 @@ import { isAdminRegistrationEnabled } from "@/app/actions/check-admin-registrati
 import Link from "next/link";
 
 // Force dynamic rendering to avoid build-time errors
+// Note: For client components, we also need to handle client creation lazily
 export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,7 +20,21 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [registrationEnabled, setRegistrationEnabled] = useState<boolean>(false);
   const router = useRouter();
-  const supabase = createClient();
+  
+  // Lazy initialization of Supabase client to avoid build-time errors
+  // Only create client in browser environment
+  const getSupabaseClient = () => {
+    if (typeof window === 'undefined') {
+      return null; // Don't create client during SSR/build
+    }
+    try {
+      return createClient();
+    } catch (err) {
+      // During build, env vars might not be available
+      console.error('Failed to create Supabase client:', err);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Check if admin registration is enabled
@@ -35,6 +51,11 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        throw new Error("Supabase client not available. Please check your environment configuration.");
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
