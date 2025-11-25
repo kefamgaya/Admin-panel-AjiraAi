@@ -10,7 +10,12 @@
  * - FIREBASE_ADMIN_PRIVATE_KEY or FIREBASE_PRIVATE_KEY
  */
 
-require('dotenv').config({ path: './.env.local' });
+// Try to load dotenv if available, otherwise use environment variables directly
+try {
+  require('dotenv').config({ path: './.env.local' });
+} catch (e) {
+  // dotenv not available, will use environment variables directly
+}
 
 const admin = require('firebase-admin');
 
@@ -146,11 +151,13 @@ async function testFCMNotification() {
     console.error(`   Message: ${error.message || error}\n`);
 
     // Provide helpful error messages
-    if (error.code === 'messaging/invalid-registration-token') {
+    if (error.code === 'messaging/invalid-registration-token' || error.code === 'messaging/invalid-argument') {
       console.error('💡 This error means:');
       console.error('   - The registration token is invalid or expired');
       console.error('   - The token may have been unregistered');
-      console.error('   - Solution: Get a new registration token from the client app\n');
+      console.error('   - The token format is incorrect');
+      console.error('   - Solution: Get a new registration token from the client app');
+      console.error('   - For testing, use a real FCM token from your web/mobile app\n');
     } else if (error.code === 'messaging/registration-token-not-registered') {
       console.error('💡 This error means:');
       console.error('   - The registration token is no longer valid');
