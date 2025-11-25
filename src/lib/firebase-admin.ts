@@ -8,15 +8,16 @@ function initializeFirebaseAdmin(): boolean {
   }
 
   try {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    // Support both naming conventions: FIREBASE_* and FIREBASE_ADMIN_*
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
 
     // Check which credentials are missing
     const missing: string[] = [];
-    if (!projectId) missing.push('FIREBASE_PROJECT_ID');
-    if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
-    if (!privateKey) missing.push('FIREBASE_PRIVATE_KEY');
+    if (!projectId) missing.push('FIREBASE_ADMIN_PROJECT_ID or FIREBASE_PROJECT_ID');
+    if (!clientEmail) missing.push('FIREBASE_ADMIN_CLIENT_EMAIL or FIREBASE_CLIENT_EMAIL');
+    if (!privateKey) missing.push('FIREBASE_ADMIN_PRIVATE_KEY or FIREBASE_PRIVATE_KEY');
 
     if (missing.length > 0) {
       const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
